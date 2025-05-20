@@ -6,7 +6,7 @@ Python module for counting buried polar atoms with unsatisfied hydrogen bonds.
 
 ### Installation
 
-Runs with the ![LASErMPNN](https://github.com/polizzilab/LASErMPNN) conda environment.
+Runs with the [LASErMPNN](https://github.com/polizzilab/LASErMPNN) conda environment.
 
 ### Usage
 
