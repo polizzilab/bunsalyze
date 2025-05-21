@@ -83,8 +83,8 @@ def compute_capacity_score(ligand_polar_atoms, protein_polar_atoms) -> dict:
     output_data = []
     for idx, polar_atoms in enumerate((ligand_polar_atoms, protein_polar_atoms)):
         residue_to_buried_atoms = defaultdict(list)
-        residue_fraction_unsatisfied = defaultdict(list)
-        residue_fraction_buried_unsatisfied = defaultdict(list)
+        residue_fraction_unsatisfied = {}
+        residue_fraction_buried_unsatisfied = {}
 
         # Map from residue to polar atoms
         for atom in polar_atoms:
@@ -107,10 +107,10 @@ def compute_capacity_score(ligand_polar_atoms, protein_polar_atoms) -> dict:
 
             # If not fully satisfied, add to the unsatisfied lists.
             if fraction_buried_capacity_satisfied < 1.0:
-                residue_fraction_unsatisfied[residue].append(1 - fraction_capacity_satisfied)
-                residue_fraction_buried_unsatisfied[residue].append(1 - fraction_buried_capacity_satisfied)
+                residue_fraction_unsatisfied[residue] = 1 - fraction_capacity_satisfied
+                residue_fraction_buried_unsatisfied[residue] = 1 - fraction_buried_capacity_satisfied
         
-        output_data.append((dict(residue_fraction_unsatisfied), dict(residue_fraction_buried_unsatisfied)))
+        output_data.append((residue_fraction_unsatisfied, residue_fraction_buried_unsatisfied))
     
     return {
         'ligand_buried_fraction_unsat': output_data[0][1], 
