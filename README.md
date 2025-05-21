@@ -31,5 +31,4 @@ options:
 ```
 
 ### TODO:
-- [ ] Add additional metrics beyond just binary is/is not bun. Per-residue fraction of capacity satisfied, etc...
 - [ ] Add support for multiple ligands

@@ -3,6 +3,7 @@ import io
 import json
 from pathlib import Path
 from pprint import pprint
+from collections import defaultdict
 
 os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["OPENBLAS_NUM_THREADS"] = "2"
@@ -53,11 +54,19 @@ def set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, i
     freesasa_struct = freesasa.Structure(str(input_path), options={'hetatm': True, 'hydrogen': False})
     sasa_data = freesasa.calc(freesasa_struct)
 
+    ligand_burial_annotations = {'ligand_atoms_in_hull': [], 'ligand_atoms_buried_sasa': [], 'ligand_atoms_sasa': {}}
     if not silent: print('Ligand Atom SASA: (< 1.0 A^2 == buried)')
     for i, atom in enumerate(ligand_polar_atoms):
         atom_name = atom.name
         chain, resname, resnum, *_ = atom.parent_group_identifier
         sasa = freesasa.selectArea([f's1, name {atom_name} and resn {resname} and chain {chain} and resi {resnum}'], freesasa_struct, sasa_data)['s1']
+
+        ligand_burial_annotations['ligand_atoms_sasa'][atom_name] = sasa
+        if ligand_burial_mask[i].item():
+            ligand_burial_annotations['ligand_atoms_in_hull'].append(atom_name)
+        if sasa < sasa_threshold:
+            ligand_burial_annotations['ligand_atoms_buried_sasa'].append(atom_name)
+
         atom.is_buried = ligand_burial_mask[i].item() and (sasa < sasa_threshold)
         if not silent: print(f'\t{atom_name} {sasa}')
 
@@ -66,6 +75,50 @@ def set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, i
         chain, resname, resnum, *_ = atom.parent_group_identifier
         sasa = freesasa.selectArea([f's1, name {atom_name} and resn {resname} and chain {chain} and resi {resnum}'], freesasa_struct, sasa_data)['s1']
         atom.is_buried = protein_burial_mask[i].item() and (sasa < sasa_threshold)
+    
+    return ligand_burial_annotations
+
+
+def compute_capacity_score(ligand_polar_atoms, protein_polar_atoms) -> dict:
+    output_data = []
+    for idx, polar_atoms in enumerate((ligand_polar_atoms, protein_polar_atoms)):
+        residue_to_buried_atoms = defaultdict(list)
+        residue_fraction_unsatisfied = defaultdict(list)
+        residue_fraction_buried_unsatisfied = defaultdict(list)
+
+        # Map from residue to polar atoms
+        for atom in polar_atoms:
+            residue_to_buried_atoms[atom.parent_group_identifier].append(atom)
+        
+        # Loop over each residue and compute the fraction of capacity not satisfied
+        for residue, atoms in residue_to_buried_atoms.items():
+            remaining_capacity, max_capacity, buried_remaining_capacity, max_buried_capacity = 0, 0, 0, 0
+            for atom in atoms:
+                if (atom.name not in ('N', 'O', 'OXT', 'SD')) or (idx == 0):
+                    remaining_capacity += atom.donor_count + atom.acceptor_count
+                    max_capacity += atom.max_donor_count + atom.max_acceptor_count
+                    if atom.is_buried:
+                        buried_remaining_capacity += atom.donor_count + atom.acceptor_count
+                        max_buried_capacity += atom.max_donor_count + atom.max_acceptor_count
+
+            # Calculate the fraction of capacity satisfied for buried and non-buried atoms.
+            fraction_buried_capacity_satisfied = (max_buried_capacity - buried_remaining_capacity) / max_buried_capacity if max_buried_capacity else 1.0
+            fraction_capacity_satisfied = (max_capacity - remaining_capacity) / max_capacity if max_capacity else 1.0
+
+            # If not fully satisfied, add to the unsatisfied lists.
+            if fraction_buried_capacity_satisfied < 1.0:
+                residue_fraction_unsatisfied[residue].append(1 - fraction_capacity_satisfied)
+                residue_fraction_buried_unsatisfied[residue].append(1 - fraction_buried_capacity_satisfied)
+        
+        output_data.append((dict(residue_fraction_unsatisfied), dict(residue_fraction_buried_unsatisfied)))
+    
+    return {
+        'ligand_buried_fraction_unsat': output_data[0][1], 
+        'protein_buried_fraction_unsat': output_data[1][1],
+        'ligand_fraction_unsat': output_data[0][0], 
+        'protein_fraction_unsat': output_data[1][0]
+    }
+
 
 
 def main(input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, sasa_threshold: float = 1.0, silent: bool = True):
@@ -78,18 +131,22 @@ def main(input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, sa
     # Get the hbond-able polar atoms.
     ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag)
     protein_polar_atoms = get_protein_polar_atoms(prot_ag)
-    set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent)
+    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
     g = PolarAtomGraph(ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=True)
     ligand_buns = g.compute_ligand_buns()
     protein_buns = g.compute_protein_buns()
 
-    output = {'input_path': str(input_path), 'ligand_buns': [], 'protein_buns': []}
-    for i in ligand_buns:
-        output['ligand_buns'].append((i.name, *i.parent_group_identifier))
-    for i in protein_buns:
-        output['protein_buns'].append((i.name, *i.parent_group_identifier))
+    fraction_unsat_dicts = compute_capacity_score(ligand_polar_atoms, protein_polar_atoms)
+
+    output = {
+        'input_path': str(input_path), 
+        'ligand_buns': [(i.name, *i.parent_group_identifier) for i in ligand_buns], 
+        'protein_buns': [(i.name, *i.parent_group_identifier) for i in protein_buns], 
+        **fraction_unsat_dicts,
+        **ligand_burial_annotations,
+    }
     
     return output
 
