@@ -19,7 +19,7 @@ def num_lone_pairs(atom) -> int:
     return max(0, math.floor(0.5 * (v - c - b)))
 
 
-def compute_ligand_capacity(rdmol):
+def compute_ligand_capacity(rdmol: Chem.Mol) -> dict:
     """
     For each N or O atom:
       - Donor capacity: total H count (implicit + explicit)
@@ -65,7 +65,7 @@ def compute_ligand_capacity(rdmol):
     return capacity
 
 
-def get_ligand_polar_atoms(lig_cap, lig_ag, covalent_hydrogen_max_distance = 1.2) -> List[PolarAtom]:
+def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, covalent_hydrogen_max_distance: float = 1.2) -> List[PolarAtom]:
     polar_atoms = []
     for atom, don_acc in lig_cap.items():
         # Skip if not donor or acceptor

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from pprint import pprint
 from collections import defaultdict
+from typing import Sequence
 
 os.environ["OMP_NUM_THREADS"] = "2"
 os.environ["OPENBLAS_NUM_THREADS"] = "2"
@@ -18,6 +19,7 @@ from rdkit import Chem
 from rdkit import RDLogger
 from rdkit.Chem import AllChem
 
+from bbunsalyze.utils.constants import PolarAtom, DonorHydrogen
 from bbunsalyze.utils.calc_ligand_dons_accs import get_ligand_polar_atoms, compute_ligand_capacity
 from bbunsalyze.utils.calc_protein_dons_accs import get_protein_polar_atoms
 from bbunsalyze.utils.burial_calc import compute_fast_ligand_burial_mask
@@ -27,7 +29,7 @@ freesasa.setVerbosity(1)
 RDLogger.DisableLog('rdApp.*') # Disables all RDKit logging
 
 
-def parse_complex_and_build_rdkit_ligand(pr_complex, smiles):
+def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str):
     prot_ag = pr_complex.select('protein').copy()
     lig_ag = pr_complex.select('not protein').copy()
 
@@ -47,7 +49,10 @@ def parse_complex_and_build_rdkit_ligand(pr_complex, smiles):
     return prot_ag, lig_ag, smi_mol, lig_mol
 
 
-def set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold, silent):
+def set_burial_annotations(
+    ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], 
+    ca_coords: np.ndarray, input_path: os.PathLike, sasa_threshold: float, silent: bool
+):
     ligand_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in ligand_polar_atoms]))
     protein_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in protein_polar_atoms]))
 
@@ -79,7 +84,9 @@ def set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, i
     return ligand_burial_annotations
 
 
-def compute_capacity_score(ligand_polar_atoms, protein_polar_atoms) -> dict:
+def compute_capacity_score(
+    ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom]
+) -> dict:
     output_data = []
     for idx, polar_atoms in enumerate((ligand_polar_atoms, protein_polar_atoms)):
         residue_to_buried_atoms = defaultdict(list)
@@ -120,8 +127,10 @@ def compute_capacity_score(ligand_polar_atoms, protein_polar_atoms) -> dict:
     }
 
 
-
-def main(input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, sasa_threshold: float = 1.0, silent: bool = True):
+def main(
+    input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, 
+    sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False
+) -> dict:
 
     # Load the relevant protein and ligand data.
     prot_ag, lig_ag, smi_mol, lig_mol = parse_complex_and_build_rdkit_ligand(protein_complex, smiles)
@@ -134,7 +143,7 @@ def main(input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, sa
     ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
-    g = PolarAtomGraph(ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=True)
+    g = PolarAtomGraph(ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check)
     ligand_buns = g.compute_ligand_buns()
     protein_buns = g.compute_protein_buns()
 
@@ -158,6 +167,7 @@ if __name__ == '__main__':
     parser.add_argument("smiles", type=str, help="SMILES string of the ligand")
     parser.add_argument("--sasa_threshold", type=float, default=1.0, help="SASA threshold for burial (default: 1.0 Å²)")
     parser.add_argument("--output", type=str, help="Output file path (default: print to stdout)")
+    parser.add_argument("--disable_hydrogen_clash_check", action='store_true', help="Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.")
     args = parser.parse_args()
 
     # input_path = 'test.pdb'
@@ -180,7 +190,10 @@ if __name__ == '__main__':
         raise FileNotFoundError(f"Input file {args.input_path} does not exist.")
 
     complex_ = pr.parsePDB(str(args.input_path))
-    results = main(args.input_path, complex_, args.smiles, sasa_threshold=args.sasa_threshold, silent=False)
+    results = main(
+        args.input_path, complex_, args.smiles, 
+        sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check
+    )
     
     if args.output:
         pprint(results)

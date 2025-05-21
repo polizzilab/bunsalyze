@@ -7,7 +7,7 @@ torch.set_num_threads(2)
 import numpy as np
 import networkx as nx
 
-from .constants import PolarAtom
+from .constants import PolarAtom, DonorHydrogen
 
 
 ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.5
@@ -19,7 +19,9 @@ H_TO_H_CLASH_DIST = 1.5
 
 
 class PolarAtomGraph:
-    def __init__( self, ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], run_hydrogen_atom_clash_check):
+    def __init__(
+        self, ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], run_hydrogen_atom_clash_check: bool
+    ):
 
         self.hbond_max_distance = S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF
         self.ligand_polar_atoms = ligand_polar_atoms
@@ -121,7 +123,10 @@ class PolarAtomGraph:
         return unsatisfied_protein_atoms
 
 
-def is_valid_hbond(donor_atom, donor_hydrogen, acceptor, hydrogen_clash_check=False, debug=False):
+def is_valid_hbond(
+    donor_atom: PolarAtom, donor_hydrogen: DonorHydrogen, acceptor: PolarAtom, 
+    hydrogen_clash_check: bool, debug: bool = False
+):
     # Check that donor and acceptor are possible.
 
     threshold_distance = None
