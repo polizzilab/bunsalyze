@@ -3,19 +3,14 @@ from dataclasses import dataclass
 
 import torch
 torch.set_num_threads(2)
-
 import numpy as np
 import networkx as nx
 
-from .constants import PolarAtom, DonorHydrogen
-
-
-ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.5
-ON_S_HYDROGEN_BOND_DISTANCE_CUTOFF = 4.2
-S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF = 4.5
-MIN_HBOND_ANGLE = 110
-MIN_HBOND_DISTANCE = 1.5
-H_TO_H_CLASH_DIST = 1.5
+from .constants import (
+    PolarAtom, DonorHydrogen, ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF, 
+    ON_S_HYDROGEN_BOND_DISTANCE_CUTOFF, S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF, 
+    MIN_HBOND_ANGLE, MIN_HBOND_DISTANCE, H_TO_H_CLASH_DIST
+)
 
 
 class PolarAtomGraph:
