@@ -178,10 +178,9 @@ def is_valid_hbond(
         return False
 
     # Angle between D->H and A->H vectors should be greater than MIN_HBOND_ANGLE
-    angle = np.rad2deg(np.arccos((
-        np.dot(donor_hydrogen.coord - donor_atom.coord, donor_hydrogen.coord - acceptor_atom.coord) /
-        (np.linalg.norm(donor_hydrogen.coord - donor_atom.coord) * np.linalg.norm(donor_hydrogen.coord - acceptor_atom.coord))),
-    ))
+    d_to_h = donor_hydrogen.coord - donor_atom.coord
+    a_to_h = donor_hydrogen.coord - acceptor_atom.coord
+    angle = np.rad2deg(np.arccos(np.dot(d_to_h, a_to_h) / (np.linalg.norm(d_to_h) * np.linalg.norm(a_to_h))))
     if angle < MIN_HBOND_ANGLE:
         if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, f'angle too small {angle}')
         return False
