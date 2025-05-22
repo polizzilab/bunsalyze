@@ -19,7 +19,7 @@ from rdkit import Chem
 from rdkit import RDLogger
 from rdkit.Chem import AllChem
 
-from bbunsalyze.utils.constants import PolarAtom, DonorHydrogen
+from bbunsalyze.utils.constants import PolarAtom 
 from bbunsalyze.utils.calc_ligand_dons_accs import get_ligand_polar_atoms, compute_ligand_capacity
 from bbunsalyze.utils.calc_protein_dons_accs import get_protein_polar_atoms
 from bbunsalyze.utils.burial_calc import compute_fast_ligand_burial_mask
