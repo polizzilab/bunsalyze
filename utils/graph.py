@@ -47,16 +47,16 @@ class PolarAtomGraph:
     def _get_protein_coords(self):
         return torch.from_numpy(np.array([atom.coord for atom in self.protein_polar_atoms]))
 
-    def _get_neighborhood(self, atom_index):
+    def _get_neighborhood(self, atom_index: int):
         atom_neighbors = list(self.graph.neighbors(atom_index))
 
         neighbor_ligand_atom_indices = sorted([
-            (x, self.distance_matrix[atom_index, x]) 
+            (x, self.distance_matrix[atom_index, x].item()) 
             for x in atom_neighbors if x in self.ligand_atom_indices
         ], key=lambda x: x[1])
 
         neighbor_protein_atom_indices = sorted([
-            (x - len(self.ligand_polar_atoms), self.distance_matrix[atom_index, x]) 
+            (x - len(self.ligand_polar_atoms), self.distance_matrix[atom_index, x].item()) 
             for x in atom_neighbors if x not in self.ligand_atom_indices
         ], key=lambda x: x[1])
 
