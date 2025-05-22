@@ -65,20 +65,26 @@ class PolarAtomGraph:
     def _consume_neighborhood(self, curr_polar_atom, neighbor_polar_atoms, debug=False):
         found_valid_hbond = False
         for neighbor_polar_atom in neighbor_polar_atoms:
-            # Check the current atom and neighbor atom for donor hydrogens.
-            for hydrogen in curr_polar_atom.donor_hydrogens:
-                found_valid_hbond = (
-                    found_valid_hbond or 
-                    is_valid_hbond(curr_polar_atom, hydrogen, neighbor_polar_atom, hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug)
-                )
-            for neighbor_hydrogen in neighbor_polar_atom.donor_hydrogens:
-                found_valid_hbond = (
-                    found_valid_hbond or 
-                    is_valid_hbond(neighbor_polar_atom, neighbor_hydrogen, curr_polar_atom, hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug)
-                )
-            if debug: print(curr_polar_atom.name, curr_polar_atom.parent_group_identifier, neighbor_polar_atom.name, neighbor_polar_atom.parent_group_identifier, found_valid_hbond)
+
+            # Can escape this if we find a valid hbond.
             if found_valid_hbond:
                 break
+
+            # Check the current atom and neighbor atom for donor hydrogens.
+            for hydrogen in curr_polar_atom.donor_hydrogens:
+                found_valid_hbond = found_valid_hbond or is_valid_hbond(
+                    curr_polar_atom, hydrogen, neighbor_polar_atom, 
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug
+                )
+            for neighbor_hydrogen in neighbor_polar_atom.donor_hydrogens:
+                found_valid_hbond = found_valid_hbond or is_valid_hbond(
+                    neighbor_polar_atom, neighbor_hydrogen, curr_polar_atom, 
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug
+                )
+            if debug: print(
+                curr_polar_atom.name, curr_polar_atom.parent_group_identifier, 
+                neighbor_polar_atom.name, neighbor_polar_atom.parent_group_identifier, found_valid_hbond
+            )
         return found_valid_hbond
     
     def compute_ligand_buns(self):
@@ -117,8 +123,10 @@ class PolarAtomGraph:
                 (not found_valid_hbond) and 
                 (not curr_polar_atom.name in ('N', 'O', 'OXT')) and 
                 curr_polar_atom.is_buried and
-                (not (curr_polar_atom.element == 'S' and curr_polar_atom.parent_group_identifier[1] == 'MET')) # Met sulfur atoms may accept but should not be counted as buns.
+                (not (curr_polar_atom.element == 'S' and curr_polar_atom.parent_group_identifier[1] == 'MET')) 
             ):
+                # Don't count backbone atoms as BUNs since we're comparing many sequences on similar backbones.
+                # MET sulfur atoms may accept but shouldn't be counted as BUNs.
                 unsatisfied_protein_atoms.append(curr_polar_atom)
 
         return unsatisfied_protein_atoms
