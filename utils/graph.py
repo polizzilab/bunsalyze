@@ -163,7 +163,7 @@ def is_valid_hbond(
             return True
 
         # If the donor hydrogen is already engaged to something else, we can't use it for this hbond.
-        if debug: print(donor_atom.name, donor_hydrogen.name, acceptor.name, False, 'donor hydrogen already engaged')
+        if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, 'donor hydrogen already engaged')
         return False
     
     # Check if the donor and acceptor have capacity for hbonding.
