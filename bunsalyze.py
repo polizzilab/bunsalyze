@@ -51,10 +51,11 @@ def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str):
 
 def set_burial_annotations(
     ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], 
-    ca_coords: np.ndarray, input_path: os.PathLike, sasa_threshold: float, silent: bool
+    ca_coords: np.ndarray, input_path: os.PathLike, sasa_threshold: float, silent: bool,
+    alpha_hull_alpha: float,
 ):
-    ligand_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in ligand_polar_atoms]))
-    protein_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in protein_polar_atoms]))
+    ligand_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in ligand_polar_atoms]), alpha=alpha_hull_alpha)
+    protein_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in protein_polar_atoms]), alpha=alpha_hull_alpha)
 
     freesasa_struct = freesasa.Structure(str(input_path), options={'hetatm': True, 'hydrogen': False})
     sasa_data = freesasa.calc(freesasa_struct)
@@ -129,7 +130,8 @@ def compute_capacity_score(
 
 def main(
     input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, 
-    sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False
+    sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
+    alpha_hull_alpha: float = 9.0
 ) -> dict:
 
     # Load the relevant protein and ligand data.
@@ -138,9 +140,9 @@ def main(
     ca_coords = prot_ag.select('name CA').getCoords()
 
     # Get the hbond-able polar atoms.
-    ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag)
-    protein_polar_atoms = get_protein_polar_atoms(prot_ag)
-    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent)
+    ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, alpha_hull_alpha)
+    protein_polar_atoms = get_protein_polar_atoms(prot_ag, alpha_hull_alpha)
+    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
     g = PolarAtomGraph(ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check)
@@ -166,6 +168,7 @@ if __name__ == '__main__':
     parser.add_argument("input_path", type=str, help="Path to the PDB file containing the protein-ligand complex")
     parser.add_argument("smiles", type=str, help="SMILES string of the ligand")
     parser.add_argument("--sasa_threshold", type=float, default=1.0, help="SASA threshold for burial (default: 1.0 Å²)")
+    parser.add_argument("--alpha_hull_alpha", type=float, default=9.0, help="Convex hull alpha parameter, default is 9.0")
     parser.add_argument("--output", type=str, help="Output file path (default: print to stdout)")
     parser.add_argument("--disable_hydrogen_clash_check", action='store_true', help="Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.")
     args = parser.parse_args()
@@ -192,7 +195,8 @@ if __name__ == '__main__':
     complex_ = pr.parsePDB(str(args.input_path))
     results = main(
         args.input_path, complex_, args.smiles, 
-        sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check
+        sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
+        alpha_hull_alpha=args.alpha_hull_alpha
     )
     
     if args.output:
