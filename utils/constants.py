@@ -10,6 +10,12 @@ MIN_HBOND_ANGLE = 110
 MIN_HBOND_DISTANCE = 1.5
 H_TO_H_CLASH_DIST = 1.5
 
+DEFAULT_NCAA_DICT = {
+    "SEP": {'N': (1, ['H']), 'O': (2, []), 'OG': (2, []), 'O1P': (2, []), 'O2P': (2, []), 'O3P': (2, [])},
+    "PTR": {'N': (1, ['H']), 'O': (2, []), 'OH': (2, []), 'O1P': (2, []), 'O2P': (2, []), 'O3P': (2, [])},
+    "DJD": {'N': (0, ['H']), 'O': (2, []), 'N03': (1, []), 'N04': (1, []), 'N05': (1, []), 'N06': (1, [])},
+}
+
 
 @dataclass
 class DonorHydrogen:
@@ -106,3 +112,4 @@ for aa, subdict in aa_to_sc_hbond_donor_to_heavy_atom.items():
 for aa, sublist in aa_to_sc_hbond_acceptor_heavy_atom.items():
     for key in sublist:
         aa_to_polar_atoms[aa].add(key)
+

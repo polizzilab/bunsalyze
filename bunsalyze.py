@@ -1,6 +1,7 @@
 import os
 import io
 import json
+import ast
 from pathlib import Path
 from pprint import pprint
 from collections import defaultdict
@@ -29,14 +30,15 @@ freesasa.setVerbosity(1)
 RDLogger.DisableLog('rdApp.*') # Disables all RDKit logging
 
 
-def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str):
-    prot_ag = pr_complex.select('protein').copy()
-    lig_ag = pr_complex.select('not protein').copy()
+def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str, ligand_selection_string: str):
+    prot_ag = pr_complex.select(f'not {ligand_selection_string}').copy()
+    lig_ag = pr_complex.select(ligand_selection_string).copy()
 
     if len(set(lig_ag.getResindices())) > 1:
         raise NotImplementedError(
-            'Multiple residues in ligand.'
-            'Only single residue ligands are currently supported since we only take one smiles string as input.'
+            f"Multiple residues in ligand after selecting by \'{ligand_selection_string}\' " 
+            "Only single residue ligands are currently supported since we only take one smiles string as input. "
+            "Try setting --override_ligand_selection_string to a more specific selection."
         )
 
     smi_mol = Chem.MolFromSmiles(smiles)
@@ -131,17 +133,18 @@ def compute_capacity_score(
 def main(
     input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, 
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
-    alpha_hull_alpha: float = 9.0
+    alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
+    ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False,
 ) -> dict:
 
     # Load the relevant protein and ligand data.
-    prot_ag, lig_ag, smi_mol, lig_mol = parse_complex_and_build_rdkit_ligand(protein_complex, smiles)
+    prot_ag, lig_ag, smi_mol, lig_mol = parse_complex_and_build_rdkit_ligand(protein_complex, smiles, override_ligand_selection_string)
     lig_cap = compute_ligand_capacity(lig_mol)
     ca_coords = prot_ag.select('name CA').getCoords()
 
     # Get the hbond-able polar atoms.
     ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, alpha_hull_alpha)
-    protein_polar_atoms = get_protein_polar_atoms(prot_ag, alpha_hull_alpha)
+    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors)
     ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
@@ -162,6 +165,7 @@ def main(
     return output
 
 
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Analyze protein-ligand complexes for buried unsatisfied polar atoms (BUNs).")
@@ -171,7 +175,19 @@ if __name__ == '__main__':
     parser.add_argument("--alpha_hull_alpha", type=float, default=9.0, help="Convex hull alpha parameter, default is 9.0")
     parser.add_argument("--output", type=str, help="Output file path (default: print to stdout)")
     parser.add_argument("--disable_hydrogen_clash_check", action='store_true', help="Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.")
+    parser.add_argument('--override_ligand_selection_string', type=str, default='not protein', help='How to select the ligand from the PDB file, default is "not protein" but this fails with noncanonical amino acids.')
+
+    ncaa_dict_example_str = r'{"DJD": {"N": (0, ["H"]), "O": (2, []), "N03": (1, []), "N04": (1, []), "N05": (1, []), "N06": (1, [])}}'
+    parser.add_argument('--ncaa_dict', type=str, default='', help=f'Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: \'{ncaa_dict_example_str}\'')
+    parser.add_argument('--ignore_sulfur_acceptors', action='store_true', help='If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.')
     args = parser.parse_args()
+
+    ncaa_dict = {}
+    if args.ncaa_dict is not None and args.ncaa_dict != '':
+        try:
+            ncaa_dict = ast.literal_eval(args.ncaa_dict)
+        except Exception as e:
+            raise ValueError(f'Error parsing ncaa_dict argument: {e}. Please provide a valid dictionary string, e.g. \'{ncaa_dict_example_str}\'')
 
     # input_path = 'test.pdb'
     # smiles = r"O=C(C1=C([H])N2C([H])=C(N([H])C(C3=C([H])C([H])=C(O[H])C([H])=C3[H])=O)C([H])=C([H])C2=N1)N4C([H])([H])[C@](C([H])([H])Cl)([H])C5=C4C([H])=C(O[H])C6=C([H])C([H])=C([H])C(C([H])([H])[H])=C65"
@@ -196,7 +212,7 @@ if __name__ == '__main__':
     results = main(
         args.input_path, complex_, args.smiles, 
         sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
-        alpha_hull_alpha=args.alpha_hull_alpha
+        alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string
     )
     
     if args.output:
