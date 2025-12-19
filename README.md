@@ -17,9 +17,13 @@ Runs with the [LASErMPNN](https://github.com/polizzilab/LASErMPNN) conda environ
 
 ### Usage
 
+From the directory containing this github repository and run:
+
 ```bash
 python -m bunsalyze.bunsalyze ./path/to/pdb_file.pdb 'smiles_string_for_ligand'
 ```
+
+Here is the result of the `--help` flag:
 
 ```text
 usage: bunsalyze.py [-h] [--sasa_threshold SASA_THRESHOLD] [--alpha_hull_alpha ALPHA_HULL_ALPHA] [--output OUTPUT] [--disable_hydrogen_clash_check] [--override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING] [--ncaa_dict NCAA_DICT] [--ignore_sulfur_acceptors] [--ignore_sasa_threshold] input_path smiles

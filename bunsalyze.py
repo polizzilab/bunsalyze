@@ -20,11 +20,11 @@ from rdkit import Chem
 from rdkit import RDLogger
 from rdkit.Chem import AllChem
 
-from bbunsalyze.utils.constants import PolarAtom 
-from bbunsalyze.utils.calc_ligand_dons_accs import get_ligand_polar_atoms, compute_ligand_capacity
-from bbunsalyze.utils.calc_protein_dons_accs import get_protein_polar_atoms
-from bbunsalyze.utils.burial_calc import compute_fast_ligand_burial_mask
-from bbunsalyze.utils.graph import PolarAtomGraph
+from bunsalyze.utils.constants import PolarAtom 
+from bunsalyze.utils.calc_ligand_dons_accs import get_ligand_polar_atoms, compute_ligand_capacity
+from bunsalyze.utils.calc_protein_dons_accs import get_protein_polar_atoms
+from bunsalyze.utils.burial_calc import compute_fast_ligand_burial_mask
+from bunsalyze.utils.graph import PolarAtomGraph
 
 freesasa.setVerbosity(1)
 RDLogger.DisableLog('rdApp.*') # Disables all RDKit logging
