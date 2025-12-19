@@ -171,7 +171,7 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="Analyze protein-ligand complexes for buried unsatisfied polar atoms (BUNs).")
     parser.add_argument("input_path", type=str, help="Path to the PDB file containing the protein-ligand complex")
-    parser.add_argument("smiles", type=str, help="SMILES string of the ligand")
+    parser.add_argument("smiles", type=str, help="SMILES string representing the ligand")
     parser.add_argument("--sasa_threshold", type=float, default=1.0, help="SASA threshold for burial (default: 1.0 Å²)")
     parser.add_argument("--alpha_hull_alpha", type=float, default=9.0, help="Convex hull alpha parameter, default is 9.0")
     parser.add_argument("--output", type=str, help="Output file path (default: print to stdout)")
