@@ -25,6 +25,47 @@ python -m bunsalyze.bunsalyze ./path/to/pdb_file.pdb 'smiles_string_for_ligand'
 
 Here is the result of the `--help` flag:
 
+```bash
+$ python -m bunsalyze.bunsalyze ./bunsalyze/example_pdbs/epic_1.pdb 'CC[C@]1(O)C2=C(C(N3CC4=C5[C@@H]([NH3+])CCC6=C5C(N=C4C3=C2)=CC(F)=C6C)=O)COC1=O'
+Ligand Atom SASA: (< 1.0 A^2 == buried)
+        O 4.069010588001133
+        N2 16.1801952763787
+        O2 0.0
+        N3 0.0
+        O3 0.0
+        O4 0.0
+{'input_path': './bunsalyze/example_pdbs/epic_1.pdb',
+ 'ligand_atoms_buried_sasa': ['O2', 'N3', 'O3', 'O4'],
+ 'ligand_atoms_in_hull': ['O', 'O2', 'N3', 'O3', 'O4'],
+ 'ligand_atoms_sasa': {'N2': 16.1801952763787,
+                       'N3': 0.0,
+                       'O': 4.069010588001133,
+                       'O2': 0.0,
+                       'O3': 0.0,
+                       'O4': 0.0},
+ 'ligand_buns': [('N3', np.str_('X'), np.str_('X9E'), 1, np.str_('')),
+                 ('O3', np.str_('X'), np.str_('X9E'), 1, np.str_('')),
+                 ('O4', np.str_('X'), np.str_('X9E'), 1, np.str_(''))],
+ 'ligand_buried_fraction_unsat': {(np.str_('X'), np.str_('X9E'), 1, np.str_('')): 0.875},
+ 'ligand_fraction_unsat': {(np.str_('X'), np.str_('X9E'), 1, np.str_('')): 0.8461538461538461},
+ 'protein_buns': [(np.str_('OE1'),
+                   np.str_('A'),
+                   np.str_('GLU'),
+                   1,
+                   np.str_('')),
+                  (np.str_('NE2'),
+                   np.str_('A'),
+                   np.str_('GLN'),
+                   51,
+                   np.str_(''))],
+ 'protein_buried_fraction_unsat': {(np.str_('A'), np.str_('GLN'), 51, np.str_('')): 0.75,
+                                   (np.str_('A'), np.str_('GLU'), 1, np.str_('')): 1.0},
+ 'protein_fraction_unsat': {(np.str_('A'), np.str_('GLN'), 51, np.str_('')): 0.75,
+                            (np.str_('A'), np.str_('GLU'), 1, np.str_('')): 1.0}}
+```
+
+The "BUNS Score" used in NISE is the sum of the lengths of the ligand buns (x2) and protein buns lists.
+
 ```text
 usage: bunsalyze.py [-h] [--sasa_threshold SASA_THRESHOLD] [--alpha_hull_alpha ALPHA_HULL_ALPHA] [--output OUTPUT] [--disable_hydrogen_clash_check] [--override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING] [--ncaa_dict NCAA_DICT] [--ignore_sulfur_acceptors] [--ignore_sasa_threshold] input_path smiles
 
