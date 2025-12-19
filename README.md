@@ -25,6 +25,37 @@ python -m bunsalyze.bunsalyze ./path/to/pdb_file.pdb 'smiles_string_for_ligand'
 
 Here is the result of the `--help` flag:
 
+```text
+usage: bunsalyze.py [-h] [--sasa_threshold SASA_THRESHOLD] [--alpha_hull_alpha ALPHA_HULL_ALPHA] [--output OUTPUT] [--disable_hydrogen_clash_check] [--override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING] [--ncaa_dict NCAA_DICT] [--ignore_sulfur_acceptors] [--ignore_sasa_threshold] input_path smiles
+
+Analyze protein-ligand complexes for buried unsatisfied polar atoms (BUNs).
+
+positional arguments:
+  input_path            Path to the PDB file containing the protein-ligand complex
+  smiles                SMILES string representing the ligand
+
+options:
+  -h, --help            show this help message and exit
+  --sasa_threshold SASA_THRESHOLD
+                        SASA threshold for burial (default: 1.0 Å²)
+  --alpha_hull_alpha ALPHA_HULL_ALPHA
+                        Convex hull alpha parameter, default is 9.0
+  --output OUTPUT       Output file path (default: print to stdout)
+  --disable_hydrogen_clash_check
+                        Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.
+  --override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING
+                        How to select the ligand from the PDB file, default is "not protein" but this fails with noncanonical amino acids.
+  --ncaa_dict NCAA_DICT
+                        Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: '{"DJD": {"N": (0, ["H"]), "O": (2, []), "N03": (1, []), "N04": (1, []), "N05": (1, []), "N06": (1, [])}}'
+  --ignore_sulfur_acceptors
+                        If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.
+  --ignore_sasa_threshold
+                        If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.
+```
+
+Here is a result of running the bunsalyze function on the PDB found in example_pdbs.
+The "BUNS Score" used in NISE is the sum of the lengths of the ligand buns (x2) and protein buns lists.
+
 ```bash
 $ python -m bunsalyze.bunsalyze ./bunsalyze/example_pdbs/epic_1.pdb 'CC[C@]1(O)C2=C(C(N3CC4=C5[C@@H]([NH3+])CCC6=C5C(N=C4C3=C2)=CC(F)=C6C)=O)COC1=O'
 Ligand Atom SASA: (< 1.0 A^2 == buried)
@@ -64,35 +95,7 @@ Ligand Atom SASA: (< 1.0 A^2 == buried)
                             (np.str_('A'), np.str_('GLU'), 1, np.str_('')): 1.0}}
 ```
 
-The "BUNS Score" used in NISE is the sum of the lengths of the ligand buns (x2) and protein buns lists.
 
-```text
-usage: bunsalyze.py [-h] [--sasa_threshold SASA_THRESHOLD] [--alpha_hull_alpha ALPHA_HULL_ALPHA] [--output OUTPUT] [--disable_hydrogen_clash_check] [--override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING] [--ncaa_dict NCAA_DICT] [--ignore_sulfur_acceptors] [--ignore_sasa_threshold] input_path smiles
-
-Analyze protein-ligand complexes for buried unsatisfied polar atoms (BUNs).
-
-positional arguments:
-  input_path            Path to the PDB file containing the protein-ligand complex
-  smiles                SMILES string representing the ligand
-
-options:
-  -h, --help            show this help message and exit
-  --sasa_threshold SASA_THRESHOLD
-                        SASA threshold for burial (default: 1.0 Å²)
-  --alpha_hull_alpha ALPHA_HULL_ALPHA
-                        Convex hull alpha parameter, default is 9.0
-  --output OUTPUT       Output file path (default: print to stdout)
-  --disable_hydrogen_clash_check
-                        Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.
-  --override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING
-                        How to select the ligand from the PDB file, default is "not protein" but this fails with noncanonical amino acids.
-  --ncaa_dict NCAA_DICT
-                        Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: '{"DJD": {"N": (0, ["H"]), "O": (2, []), "N03": (1, []), "N04": (1, []), "N05": (1, []), "N06": (1, [])}}'
-  --ignore_sulfur_acceptors
-                        If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.
-  --ignore_sasa_threshold
-                        If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.
-```
 
 ### TODO:
 - [ ] Add support for multiple ligands
