@@ -167,7 +167,8 @@ def main(
 
 
 
-if __name__ == '__main__':
+def cli():
+    """Command-line interface entry point."""
     import argparse
     parser = argparse.ArgumentParser(description="Analyze protein-ligand complexes for buried unsatisfied polar atoms (BUNs).")
     parser.add_argument("input_path", type=str, help="Path to the PDB file containing the protein-ligand complex")
@@ -225,3 +226,7 @@ if __name__ == '__main__':
             json.dump(results, f, indent=2)
     else:
         pprint(results)
+
+
+if __name__ == '__main__':
+    cli()
