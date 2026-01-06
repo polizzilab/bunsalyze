@@ -15,13 +15,17 @@ We typically score protein-ligand interfaces by upweighting the ligand BUN contr
 
 Runs with the [LASErMPNN](https://github.com/polizzilab/LASErMPNN) conda environment.
 
+Alternatively, install with `pip install bunsalyze` and run with `bunsalyze ...`.
+
 ### Usage
 
 From the directory containing this github repository and run:
 
 ```bash
-python -m bunsalyze.bunsalyze ./path/to/pdb_file.pdb 'smiles_string_for_ligand'
+python -m bunsalyze ./path/to/pdb_file.pdb 'smiles_string_for_ligand'
 ```
+
+Alternatively, install with `pip install bunsalyze` and run with `bunsalyze ...`.
 
 Here is the result of the `--help` flag:
 

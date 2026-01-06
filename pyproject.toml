@@ -1,0 +1,26 @@
+[project]
+name = "bunsalyze"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "freesasa>=2.2.1",
+    "networkx>=3.5",
+    "numpy>=2.3.3",
+    "pdb2pqr>=3.7.1",
+    "prody>=2.6.1",
+    "rdkit>=2025.9.1",
+    "scipy>=1.16.2",
+    "torch>=2.8.0",
+]
+
+
+# makes the project run-able as a cli tool, e.g "bunsalyze ..."
+[project.scripts]
+bunsalyze = "bunsalyze.__main__:cli"
+
+# Excludes the data directory when building the package.
+[tool.setuptools.packages.find]
+exclude = ["example_pdbs*"]
+
