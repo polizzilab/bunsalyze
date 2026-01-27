@@ -30,7 +30,7 @@ Alternatively, install with `pip install bunsalyze` and run with `bunsalyze ...`
 Here is the result of the `--help` flag:
 
 ```text
-usage: bunsalyze.py [-h] [--sasa_threshold SASA_THRESHOLD] [--alpha_hull_alpha ALPHA_HULL_ALPHA] [--output OUTPUT] [--disable_hydrogen_clash_check] [--override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING] [--ncaa_dict NCAA_DICT] [--ignore_sulfur_acceptors] [--ignore_sasa_threshold] input_path smiles
+usage: __main__.py [-h] [--sasa_threshold SASA_THRESHOLD] [--alpha_hull_alpha ALPHA_HULL_ALPHA] [--output OUTPUT] [--disable_hydrogen_clash_check] [--override_ligand_selection_string OVERRIDE_LIGAND_SELECTION_STRING] [--ncaa_dict NCAA_DICT] [--ignore_sulfur_acceptors] [--ignore_sasa_threshold] [--ignore_ca_donors] input_path smiles
 
 Analyze protein-ligand complexes for buried unsatisfied polar atoms (BUNs).
 
@@ -55,6 +55,7 @@ options:
                         If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.
   --ignore_sasa_threshold
                         If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.
+  --ignore_ca_donors    If set, ignores CA atoms as potential donors. Default behavior includes CA atoms as donors.
 ```
 
 Here is a result of running the bunsalyze function on the PDB found in example_pdbs.
