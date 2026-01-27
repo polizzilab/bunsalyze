@@ -9,7 +9,7 @@ def flat_list(nested_list):
     return [item for sublist in nested_list for item in sublist]
 
 
-def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfur_acceptors: bool = True) -> List[PolarAtom]:
+def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfur_acceptors: bool = True, use_ca_donors: bool = True) -> List[PolarAtom]:
 
     # By default, use the DEFAULT_NCAA_DICT and update it with any user-provided ncaa_dict entries.
     ncaa_dict_ = deepcopy(DEFAULT_NCAA_DICT)
@@ -75,6 +75,11 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                 print('Skipping sulfur atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
                 continue
 
+            if not use_ca_donors:
+                if polar_atom == 'CA':
+                    print('Skipping CA atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
+                    continue
+
             # Identify any donor hydrogens associated with the polar atom.
             donor_hydrogens = []
             if polar_atom in aa_to_sc_hbond_donor_to_heavy_atom[aa_short]:
@@ -86,7 +91,8 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     (not (polar_atom == 'N' and num_donor_hs in (1, 3))) and
                     (not (aa_short == 'P' and polar_atom == 'N' and num_donor_hs in (0, 2))) and
                     (not (aa_short == 'H' and polar_atom in ('ND1', 'NE2') and num_donor_hs == 0)) and 
-                    (not (aa_short == 'C' and polar_atom == 'SG' and num_donor_hs == 0))
+                    (not (aa_short == 'C' and polar_atom == 'SG' and num_donor_hs == 0)) and
+                    (not (aa_short == 'G' and polar_atom == 'CA' and num_donor_hs == 2))
                 ):
                     print(f"Warning: {residue.getResname()} {residue.getResnum()} {residue.getIcode()} {polar_atom} has {num_donor_hs} donor hydrogens (names: {curr_atom_names}), but expected {len(aa_to_sc_hbond_donor_to_heavy_atom[aa_short][polar_atom])}.")
 

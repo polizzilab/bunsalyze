@@ -9,6 +9,7 @@ import networkx as nx
 from .constants import (
     PolarAtom, DonorHydrogen, ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF, 
     ON_S_HYDROGEN_BOND_DISTANCE_CUTOFF, S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF, 
+    CAH_TO_ACCEPTOR_HYDROGEN_BOND_DISTANCE_CUTOFF,
     MIN_HBOND_ANGLE, MIN_HBOND_DISTANCE, H_TO_H_CLASH_DIST
 )
 
@@ -123,7 +124,8 @@ class PolarAtomGraph:
                 (not found_valid_hbond) and 
                 (not curr_polar_atom.name in ('N', 'O', 'OXT')) and 
                 curr_polar_atom.is_buried and
-                (not (curr_polar_atom.element == 'S' and curr_polar_atom.parent_group_identifier[1] == 'MET')) 
+                (not (curr_polar_atom.element == 'S' and curr_polar_atom.parent_group_identifier[1] == 'MET')) and
+                (not curr_polar_atom.name == 'CA')
             ):
                 # Don't count backbone atoms as BUNs since we're comparing many sequences on similar backbones.
                 # MET sulfur atoms may accept but shouldn't be counted as BUNs.
@@ -158,9 +160,21 @@ def is_valid_hbond(
         (donor_atom.element in ('N', 'O') and acceptor_atom.element == 'S')
     ):
         threshold_distance = ON_S_HYDROGEN_BOND_DISTANCE_CUTOFF
-    elif (donor_atom.element == 'S' and acceptor_atom.element == 'S'):
+    elif (
+        donor_atom.element == 'S' and acceptor_atom.element == 'S'
+    ):
         threshold_distance = S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF
+    elif (
+        (donor_atom.element == 'C' and acceptor_atom.element in ('N', 'O')) or 
+        (donor_atom.element in ('N', 'O') and acceptor_atom.element == 'C')
+    ):
+        # NOTE: Not counting any Ca-H...S hbonds, these would be very weak i believe..
+        threshold_distance = CAH_TO_ACCEPTOR_HYDROGEN_BOND_DISTANCE_CUTOFF
+    elif (donor_atom.element == 'C' and acceptor_atom.element == 'C'):
+        if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, 'Ca carbons dont hbond')
+        return False
     else:
+        print(donor_atom.element, donor_atom.name, acceptor_atom.element, acceptor_atom.name)
         raise NotImplementedError(f'Unsupported donor-acceptor pair: {donor_atom.element}, {acceptor_atom.element}')
 
     # Check that donor hydrogen is not already doing something else.

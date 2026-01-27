@@ -105,7 +105,7 @@ def compute_capacity_score(
         for residue, atoms in residue_to_buried_atoms.items():
             remaining_capacity, max_capacity, buried_remaining_capacity, max_buried_capacity = 0, 0, 0, 0
             for atom in atoms:
-                if (atom.name not in ('N', 'O', 'OXT', 'SD')) or (idx == 0):
+                if (atom.name not in ('N', 'O', 'OXT', 'SD', 'CA')) or (idx == 0):
                     remaining_capacity += atom.donor_count + atom.acceptor_count
                     max_capacity += atom.max_donor_count + atom.max_acceptor_count
                     if atom.is_buried:
@@ -136,6 +136,7 @@ def main(
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
+    ignore_ca_donors: bool = False
 ) -> dict:
 
     # Load the relevant protein and ligand data.
@@ -145,7 +146,7 @@ def main(
 
     # Get the hbond-able polar atoms.
     ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, alpha_hull_alpha)
-    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors)
+    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=not ignore_ca_donors)
     ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
@@ -183,6 +184,7 @@ def cli():
     parser.add_argument('--ncaa_dict', type=str, default='', help=f'Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: \'{ncaa_dict_example_str}\'')
     parser.add_argument('--ignore_sulfur_acceptors', action='store_true', help='If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.')
     parser.add_argument('--ignore_sasa_threshold', action='store_true', help='If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.')
+    parser.add_argument('--ignore_ca_donors', action='store_true', help='If set, ignores CA atoms as potential donors. Default behavior includes CA atoms as donors.')
     args = parser.parse_args()
 
     ncaa_dict = {}
@@ -191,21 +193,6 @@ def cli():
             ncaa_dict = ast.literal_eval(args.ncaa_dict)
         except Exception as e:
             raise ValueError(f'Error parsing ncaa_dict argument: {e}. Please provide a valid dictionary string, e.g. \'{ncaa_dict_example_str}\'')
-
-    # input_path = 'test.pdb'
-    # smiles = r"O=C(C1=C([H])N2C([H])=C(N([H])C(C3=C([H])C([H])=C(O[H])C([H])=C3[H])=O)C([H])=C([H])C2=N1)N4C([H])([H])[C@](C([H])([H])Cl)([H])C5=C4C([H])=C(O[H])C6=C([H])C([H])=C([H])C(C([H])([H])[H])=C65"
-    # input_path = 'epic_1.pdb'
-    # smiles = r"CC[C@]1(O)C2=C(C(N3CC4=C5[C@@H]([NH3+])CCC6=C5C(N=C4C3=C2)=CC(F)=C6C)=O)COC1=O"
-    # input_path = '000_chunk_0_seq_39_model_0_rosetta_emin.pdb'
-    # smiles = r"O=C(C([H])(C([H])(C([H])(/C([H])=C1O[C@@]([H])(C([H])([C@]([H])([C@@]2(/C([H])=C([C@]([H])(C([H])(C([H])(C([H])(C([H])(C([H])([H])[H])[H])[H])[H])[H])O[H])\\[H])[H])O[H])[H])[C@]2([H])C\\1([H])[H])[H])[H])[H])[O-]"
-    # input_path = './exa05.pdb'
-    # smiles = r"CC[C@]1(O)C2=C(C(N3CC4=C5[C@@H]([NH3+])CCC6=C5C(N=C4C3=C2)=CC(F)=C6C)=O)COC1=O"
-    # input_path = './1bs2_1.pdb'
-    # smiles = r"O=C([O-])C([NH3+])CCCNC(N)=[NH2+]"
-    # input_path = './3lvp_1.pdb'
-    # smiles = r'Cn1cc(c2c1cc(c(n2)OC)OC)c3cc4c(ccnc4[nH]3)Cl'
-    # input_path = './1th6_1.pdb'
-    # smiles = r'CN1C2CCC1CC(C2)OC(=O)C(CO)c3ccccc3'
 
     input_path = Path(args.input_path)
     if not input_path.exists():
@@ -217,7 +204,7 @@ def cli():
         sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
-        ignore_sasa_threshold=args.ignore_sasa_threshold
+        ignore_sasa_threshold=args.ignore_sasa_threshold, ignore_ca_donors=args.ignore_ca_donors
     )
     
     if args.output:
