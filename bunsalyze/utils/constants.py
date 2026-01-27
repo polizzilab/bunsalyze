@@ -6,6 +6,7 @@ import numpy as np
 ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.3
 ON_S_HYDROGEN_BOND_DISTANCE_CUTOFF = 4.0
 S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF = 4.3
+CAH_TO_ACCEPTOR_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.7 # C-alpha hydrogen to acceptor cutoff, this is pretty generous ideal length is around 3.3 Å.
 MIN_HBOND_ANGLE = 110
 MIN_HBOND_DISTANCE = 1.5
 H_TO_H_CLASH_DIST = 1.5
@@ -51,6 +52,7 @@ aa_short_to_long = {'C': 'CYS', 'D': 'ASP', 'S': 'SER', 'Q': 'GLN', 'K': 'LYS', 
 aa_long_to_short = {x: y for y, x in aa_short_to_long.items()}
 
 aa_to_sc_hbond_donor_to_heavy_atom = {
+    'G': {'CA': [('HA2', '1HA'), ('HA3', '2HA')]}, # Glycine alpha hydrogens can sometimes act as donors.
     'C': {'SG': [('HG',)]},
     'H': {
         'ND1': [('HD1',)], 
@@ -112,4 +114,3 @@ for aa, subdict in aa_to_sc_hbond_donor_to_heavy_atom.items():
 for aa, sublist in aa_to_sc_hbond_acceptor_heavy_atom.items():
     for key in sublist:
         aa_to_polar_atoms[aa].add(key)
-
