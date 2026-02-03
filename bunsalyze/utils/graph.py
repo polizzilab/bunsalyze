@@ -173,6 +173,9 @@ def is_valid_hbond(
     elif (donor_atom.element == 'C' and acceptor_atom.element == 'C'):
         if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, 'Ca carbons dont hbond')
         return False
+    elif (donor_atom.element == 'C' and acceptor_atom.element == 'S') or (donor_atom.element == 'S' and acceptor_atom.element == 'C'):
+        if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, 'Ca-S hbonds not supported')
+        return False
     else:
         print(donor_atom.element, donor_atom.name, acceptor_atom.element, acceptor_atom.name)
         raise NotImplementedError(f'Unsupported donor-acceptor pair: {donor_atom.element}, {acceptor_atom.element}')
