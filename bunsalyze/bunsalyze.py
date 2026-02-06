@@ -7,11 +7,16 @@ from pprint import pprint
 from collections import defaultdict
 from typing import Sequence
 
-os.environ["OMP_NUM_THREADS"] = "2"
-os.environ["OPENBLAS_NUM_THREADS"] = "2"
-os.environ["MKL_NUM_THREADS"] = "2"
-os.environ["VECLIB_MAXIMUM_THREADS"] = "2"
-os.environ["NUMEXPR_NUM_THREADS"] = "2"
+_thread_vars = {
+    "OMP_NUM_THREADS": "1",
+    "OPENBLAS_NUM_THREADS": "1",
+    "MKL_NUM_THREADS": "1",
+    "VECLIB_MAXIMUM_THREADS": "1",
+    "NUMEXPR_NUM_THREADS": "1",
+}
+for key, val in _thread_vars.items():
+    if key not in os.environ:
+        os.environ[key] = val
 
 import freesasa
 import prody as pr
@@ -26,7 +31,7 @@ from bunsalyze.utils.calc_protein_dons_accs import get_protein_polar_atoms
 from bunsalyze.utils.burial_calc import compute_fast_ligand_burial_mask
 from bunsalyze.utils.graph import PolarAtomGraph
 
-freesasa.setVerbosity(1)
+freesasa.setVerbosity(freesasa.silent)
 RDLogger.DisableLog('rdApp.*') # Disables all RDKit logging
 
 
