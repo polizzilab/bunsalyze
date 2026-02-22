@@ -5,12 +5,12 @@ description = "Rigorously counts protein-ligand hydrogen bonds using distance an
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "numpy",
+    "prody",
+    "scipy",
     "freesasa>=2.2.1",
     "networkx>=3.5",
-    "numpy>=2.3.1",
-    "prody>=2.6.1",
     "rdkit>=2025.03.5",
-    "scipy>=1.16.0",
     "torch>=2.4.0",
 ]
 
