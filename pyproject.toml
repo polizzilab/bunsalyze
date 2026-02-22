@@ -8,8 +8,8 @@ dependencies = [
     "numpy",
     "prody",
     "scipy",
+    "networkx",
     "freesasa>=2.2.1",
-    "networkx>=3.5",
     "rdkit>=2025.03.5",
     "torch>=2.4.0",
 ]
