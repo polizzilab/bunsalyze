@@ -86,14 +86,14 @@ def set_burial_annotations(
         if sasa < sasa_threshold:
             ligand_burial_annotations['ligand_atoms_buried_sasa'].append(atom_name)
 
-        atom.is_buried = ligand_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold)
+        atom.is_buried = ligand_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold or ignore_all_burial_criteria)
         if not silent: print(f'\t{atom_name} {sasa}')
 
     for i, atom in enumerate(protein_polar_atoms):
         atom_name = atom.name
         chain, resname, resnum, *_ = atom.parent_group_identifier
         sasa = freesasa.selectArea([f's1, name {atom_name} and resn {resname} and chain {chain} and resi {resnum}'], freesasa_struct, sasa_data)['s1']
-        atom.is_buried = protein_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold)
+        atom.is_buried = protein_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold or ignore_all_burial_criteria)
     
     return ligand_burial_annotations
 
