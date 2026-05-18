@@ -2,6 +2,7 @@ import os
 import io
 import json
 import ast
+import torch
 from pathlib import Path
 from pprint import pprint
 from collections import defaultdict
@@ -59,10 +60,14 @@ def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str, 
 def set_burial_annotations(
     ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], 
     ca_coords: np.ndarray, input_path: os.PathLike, sasa_threshold: float, silent: bool,
-    alpha_hull_alpha: float, ignore_sasa_threshold: bool
+    alpha_hull_alpha: float, ignore_sasa_threshold: bool, ignore_all_burial_criteria: bool
 ):
     ligand_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in ligand_polar_atoms]), alpha=alpha_hull_alpha)
     protein_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in protein_polar_atoms]), alpha=alpha_hull_alpha)
+
+    if ignore_all_burial_criteria:
+        ligand_burial_mask = torch.ones_like(ligand_burial_mask, dtype=torch.bool)
+        protein_burial_mask = torch.ones_like(protein_burial_mask, dtype=torch.bool)
 
     freesasa_struct = freesasa.Structure(str(input_path), options={'hetatm': True, 'hydrogen': False})
     sasa_data = freesasa.calc(freesasa_struct)
@@ -141,7 +146,7 @@ def main(
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
-    ignore_ca_donors: bool = False
+    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False
 ) -> dict:
 
     # Load the relevant protein and ligand data.
@@ -151,8 +156,8 @@ def main(
 
     # Get the hbond-able polar atoms.
     ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, alpha_hull_alpha)
-    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=not ignore_ca_donors)
-    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold)
+    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=use_ca_donors)
+    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold, ignore_all_burial_criteria=ignore_all_burial_criteria)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
     g = PolarAtomGraph(ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check)
@@ -189,7 +194,7 @@ def cli():
     parser.add_argument('--ncaa_dict', type=str, default='', help=f'Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: \'{ncaa_dict_example_str}\'')
     parser.add_argument('--ignore_sulfur_acceptors', action='store_true', help='If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.')
     parser.add_argument('--ignore_sasa_threshold', action='store_true', help='If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.')
-    parser.add_argument('--ignore_ca_donors', action='store_true', help='If set, ignores CA atoms as potential donors. Default behavior includes CA atoms as donors.')
+    parser.add_argument('--use_ca_donors', action='store_true', help='If set, uses CA atoms as potential donors. Default behavior does not use CA atoms as hbond donors.')
     args = parser.parse_args()
 
     ncaa_dict = {}
@@ -209,7 +214,7 @@ def cli():
         sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
-        ignore_sasa_threshold=args.ignore_sasa_threshold, ignore_ca_donors=args.ignore_ca_donors
+        ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors
     )
     
     if args.output:

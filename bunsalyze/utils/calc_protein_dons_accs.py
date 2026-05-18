@@ -9,7 +9,7 @@ def flat_list(nested_list):
     return [item for sublist in nested_list for item in sublist]
 
 
-def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfur_acceptors: bool = True, use_ca_donors: bool = True) -> List[PolarAtom]:
+def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfur_acceptors: bool = True, use_ca_donors: bool = False) -> List[PolarAtom]:
 
     # By default, use the DEFAULT_NCAA_DICT and update it with any user-provided ncaa_dict entries.
     ncaa_dict_ = deepcopy(DEFAULT_NCAA_DICT)
@@ -72,12 +72,12 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
         for polar_atom, polar_atom_coord in zip(curr_atom_names[polar_atoms_mask], curr_atom_coords[polar_atoms_mask]):
 
             if not use_sulfur_acceptors:
-                print('Skipping sulfur atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
+                # print('Skipping sulfur atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
                 continue
 
             if not use_ca_donors:
                 if polar_atom == 'CA':
-                    print('Skipping CA atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
+                    # print('Skipping CA atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
                     continue
 
             # Identify any donor hydrogens associated with the polar atom.
