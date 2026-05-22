@@ -62,18 +62,16 @@ def set_burial_annotations(
     ca_coords: np.ndarray, input_path: os.PathLike, sasa_threshold: float, silent: bool,
     alpha_hull_alpha: float, ignore_sasa_threshold: bool, ignore_all_burial_criteria: bool
 ):
-    ligand_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in ligand_polar_atoms]), alpha=alpha_hull_alpha)
-    protein_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in protein_polar_atoms]), alpha=alpha_hull_alpha)
-
-    if ignore_all_burial_criteria:
-        ligand_burial_mask = torch.ones_like(ligand_burial_mask, dtype=torch.bool)
-        protein_burial_mask = torch.ones_like(protein_burial_mask, dtype=torch.bool)
+    ligand_burial_mask, protein_burial_mask = None, None
+    if not ignore_all_burial_criteria:
+        ligand_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in ligand_polar_atoms]), alpha=alpha_hull_alpha)
+        protein_burial_mask = compute_fast_ligand_burial_mask(ca_coords, np.array([x.coord for x in protein_polar_atoms]), alpha=alpha_hull_alpha)
 
     freesasa_struct = freesasa.Structure(str(input_path), options={'hetatm': True, 'hydrogen': False})
     sasa_data = freesasa.calc(freesasa_struct)
 
     ligand_burial_annotations = {'ligand_atoms_in_hull': [], 'ligand_atoms_buried_sasa': [], 'ligand_atoms_sasa': {}}
-    if not silent: print('Ligand Atom SASA: (< 1.0 A^2 == buried)')
+    if not silent: print(f'Ligand Atom SASA: (< {sasa_threshold} A^2 == buried)')
     for i, atom in enumerate(ligand_polar_atoms):
         atom_name = atom.name
         chain, resname, resnum, *_ = atom.parent_group_identifier
@@ -81,19 +79,25 @@ def set_burial_annotations(
         sasa = freesasa.selectArea([f's1, name {atom_name} and resn {resname} and chain {chain} and resi {resnum}'], freesasa_struct, sasa_data)['s1']
 
         ligand_burial_annotations['ligand_atoms_sasa'][atom_name] = sasa
-        if ligand_burial_mask[i].item():
+        if ignore_all_burial_criteria or ligand_burial_mask[i].item():
             ligand_burial_annotations['ligand_atoms_in_hull'].append(atom_name)
         if sasa < sasa_threshold:
             ligand_burial_annotations['ligand_atoms_buried_sasa'].append(atom_name)
 
-        atom.is_buried = ligand_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold or ignore_all_burial_criteria)
+        if ignore_all_burial_criteria:
+            atom.is_buried = True
+        else:
+            atom.is_buried = ligand_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold)
         if not silent: print(f'\t{atom_name} {sasa}')
 
     for i, atom in enumerate(protein_polar_atoms):
         atom_name = atom.name
         chain, resname, resnum, *_ = atom.parent_group_identifier
         sasa = freesasa.selectArea([f's1, name {atom_name} and resn {resname} and chain {chain} and resi {resnum}'], freesasa_struct, sasa_data)['s1']
-        atom.is_buried = protein_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold or ignore_all_burial_criteria)
+        if ignore_all_burial_criteria:
+            atom.is_buried = True
+        else:
+            atom.is_buried = protein_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold )
     
     return ligand_burial_annotations
 
@@ -146,7 +150,7 @@ def main(
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
-    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False
+    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False, covalent_hydrogen_max_distance: float = 1.2
 ) -> dict:
 
     # Load the relevant protein and ligand data.
@@ -155,7 +159,7 @@ def main(
     ca_coords = prot_ag.select('name CA').getCoords()
 
     # Get the hbond-able polar atoms.
-    ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, alpha_hull_alpha)
+    ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, covalent_hydrogen_max_distance=covalent_hydrogen_max_distance)
     protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=use_ca_donors)
     ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold, ignore_all_burial_criteria=ignore_all_burial_criteria)
 
