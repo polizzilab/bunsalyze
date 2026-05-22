@@ -77,7 +77,7 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, covalent_hydroge
         donor_hydrogens = []
         if donor_count > 0:
             covalent_hydrogens = lig_ag.select(f'element H within {covalent_hydrogen_max_distance} of (name {atom})')
-            if covalent_hydrogens > 3:
+            if len(covalent_hydrogens) > 3:
                 print(f"Warning: More than 3 hydrogens found within covalent distance of donor atom: {atom}.")
             donor_hs = covalent_hydrogens.getNames()
             donor_hs_coords = covalent_hydrogens.getCoords()
@@ -102,6 +102,7 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, covalent_hydroge
             acceptor_count=acceptor_count,
             donor_hydrogens=donor_hydrogens,
             parent_group_identifier=parent_group_id,
-            element=atom_ag.getElements()[0]
+            element=atom_ag.getElements()[0],
+            is_ligand_atom=True
         ))
     return polar_atoms

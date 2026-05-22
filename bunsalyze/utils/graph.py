@@ -16,13 +16,15 @@ from .constants import (
 
 class PolarAtomGraph:
     def __init__(
-        self, ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], run_hydrogen_atom_clash_check: bool
+        self, ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], 
+        run_hydrogen_atom_clash_check: bool, ignore_ligand_intramolecular_hbonds: bool
     ):
 
         self.hbond_max_distance = S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF
         self.ligand_polar_atoms = ligand_polar_atoms
         self.protein_polar_atoms = protein_polar_atoms
         self.run_hydrogen_atom_clash_check = run_hydrogen_atom_clash_check
+        self.ignore_ligand_intramolecular_hbonds = ignore_ligand_intramolecular_hbonds
 
         # Compute a list of all polar atom coordinates and masks tracking which are from the ligand.
         lig_coords, prot_coords = self._get_ligand_coords(), self._get_protein_coords()
@@ -75,12 +77,14 @@ class PolarAtomGraph:
             for hydrogen in curr_polar_atom.donor_hydrogens:
                 found_valid_hbond = found_valid_hbond or is_valid_hbond(
                     curr_polar_atom, hydrogen, neighbor_polar_atom, 
-                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug,
+                    ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
             for neighbor_hydrogen in neighbor_polar_atom.donor_hydrogens:
                 found_valid_hbond = found_valid_hbond or is_valid_hbond(
                     neighbor_polar_atom, neighbor_hydrogen, curr_polar_atom, 
-                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug,
+                    ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
             if debug: print(
                 curr_polar_atom.name, curr_polar_atom.parent_group_identifier, 
@@ -136,7 +140,7 @@ class PolarAtomGraph:
 
 def is_valid_hbond(
     donor_atom: PolarAtom, donor_hydrogen: DonorHydrogen, acceptor_atom: PolarAtom, 
-    hydrogen_clash_check: bool, debug: bool = False
+    hydrogen_clash_check: bool, ignore_ligand_intramolecular_hbonds: bool = False, debug: bool = False
 ):
     """
     Check if a hydrogen bond is valid based on the distance and angle between the donor and acceptor atoms.
@@ -151,6 +155,11 @@ def is_valid_hbond(
 
     If all conditions are met, the function returns True, indicating a valid hydrogen bond. Otherwise, it returns False.
     """
+
+    if ignore_ligand_intramolecular_hbonds:
+        if donor_atom.is_ligand_atom and acceptor_atom.is_ligand_atom:
+            if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, 'ignoring ligand intramolecular hbonds')
+            return False
 
     threshold_distance = None
     if (donor_atom.element in ('N', 'O') and acceptor_atom.element in ('N', 'O')):

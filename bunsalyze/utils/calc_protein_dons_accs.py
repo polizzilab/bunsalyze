@@ -49,7 +49,8 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     acceptor_count=acceptor_count,
                     donor_hydrogens=donor_hydrogens,
                     parent_group_identifier=parent_group_id,
-                    element=atom_sele.getElements()[0]  # Infer element from name as first alphabetic character.
+                    element=atom_sele.getElements()[0],  # Infer element from name as first alphabetic character.
+                    is_ligand_atom=False
                 ))
 
             # Skip to next residue after processing ncaa.
@@ -132,7 +133,8 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                 acceptor_count=acceptor_count,
                 donor_hydrogens=donor_hydrogens,
                 parent_group_identifier=parent_group_id,
-                element=element
+                element=element,
+                is_ligand_atom=False
             ))
 
     return polar_atoms

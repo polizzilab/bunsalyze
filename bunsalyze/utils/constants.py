@@ -38,6 +38,7 @@ class PolarAtom:
     acceptor_count: int
     parent_group_identifier: tuple
     element: str
+    is_ligand_atom: bool 
     donor_hydrogens: list[DonorHydrogen]
     max_donor_count: int = field(init=False)
     max_acceptor_count: int = field(init=False)

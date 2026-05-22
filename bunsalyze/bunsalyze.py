@@ -150,7 +150,8 @@ def main(
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
-    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False, covalent_hydrogen_max_distance: float = 1.2
+    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False, 
+    covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False
 ) -> dict:
 
     # Load the relevant protein and ligand data.
@@ -164,7 +165,10 @@ def main(
     ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold, ignore_all_burial_criteria=ignore_all_burial_criteria)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
-    g = PolarAtomGraph(ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check)
+    g = PolarAtomGraph(
+        ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check,
+        ignore_ligand_intramolecular_hbonds=ignore_ligand_intramolecular_hbonds
+    )
     ligand_buns = g.compute_ligand_buns()
     protein_buns = g.compute_protein_buns()
 
@@ -193,6 +197,7 @@ def cli():
     parser.add_argument("--output", type=str, help="Output file path (default: print to stdout)")
     parser.add_argument("--disable_hydrogen_clash_check", action='store_true', help="Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.")
     parser.add_argument('--override_ligand_selection_string', type=str, default='not protein', help='How to select the ligand from the PDB file, default is "not protein" but this fails with noncanonical amino acids.')
+    parser.add_argument('--ignore_ligand_intramolecular_hbonds', action='store_true', help='If set, ignores intramolecular hbonds within the ligand when determining if a hbond is satisfied. Default behavior counts intramolecular ligand hbonds as satisfying capacity.')
 
     ncaa_dict_example_str = r'{"DJD": {"N": (0, ["H"]), "O": (2, []), "N03": (1, []), "N04": (1, []), "N05": (1, []), "N06": (1, [])}}'
     parser.add_argument('--ncaa_dict', type=str, default='', help=f'Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: \'{ncaa_dict_example_str}\'')
@@ -218,7 +223,8 @@ def cli():
         sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
-        ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors
+        ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors,
+        ignore_ligand_intramolecular_hbonds=args.ignore_ligand_intramolecular_hbonds
     )
     
     if args.output:
