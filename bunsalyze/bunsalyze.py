@@ -151,7 +151,8 @@ def main(
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
     use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False, 
-    covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False
+    covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False,
+    report_weak_acceptor_buns: bool = False
 ) -> dict:
 
     # Load the relevant protein and ligand data.
@@ -169,15 +170,15 @@ def main(
         ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check,
         ignore_ligand_intramolecular_hbonds=ignore_ligand_intramolecular_hbonds
     )
-    ligand_buns = g.compute_ligand_buns()
+    ligand_buns = g.compute_ligand_buns(report_weak_acceptor_buns=report_weak_acceptor_buns)
     protein_buns = g.compute_protein_buns()
 
     fraction_unsat_dicts = compute_capacity_score(ligand_polar_atoms, protein_polar_atoms)
 
     output = {
         'input_path': str(input_path), 
-        'ligand_buns': [(i.name, *i.parent_group_identifier) for i in ligand_buns], 
-        'protein_buns': [(i.name, *i.parent_group_identifier) for i in protein_buns], 
+        'ligand_buns': [(i.name, *i.parent_group_identifier, i.is_weak_acceptor) for i in ligand_buns], 
+        'protein_buns': [(i.name, *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns], 
         **fraction_unsat_dicts,
         **ligand_burial_annotations,
     }
@@ -204,6 +205,7 @@ def cli():
     parser.add_argument('--ignore_sulfur_acceptors', action='store_true', help='If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.')
     parser.add_argument('--ignore_sasa_threshold', action='store_true', help='If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.')
     parser.add_argument('--use_ca_donors', action='store_true', help='If set, uses CA atoms as potential donors. Default behavior does not use CA atoms as hbond donors.')
+    parser.add_argument('--report_weak_acceptor_buns', action='store_true', help='If set, reports weak acceptors (such as ligand aromatic nitrogen atoms without hydrogens) as BUNs. Default is False.')
     args = parser.parse_args()
 
     ncaa_dict = {}
@@ -224,7 +226,8 @@ def cli():
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
         ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors,
-        ignore_ligand_intramolecular_hbonds=args.ignore_ligand_intramolecular_hbonds
+        ignore_ligand_intramolecular_hbonds=args.ignore_ligand_intramolecular_hbonds,
+        report_weak_acceptor_buns=args.report_weak_acceptor_buns
     )
     
     if args.output:

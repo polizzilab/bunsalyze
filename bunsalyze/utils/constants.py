@@ -40,6 +40,7 @@ class PolarAtom:
     element: str
     is_ligand_atom: bool 
     donor_hydrogens: list[DonorHydrogen]
+    is_weak_acceptor: bool = False
     max_donor_count: int = field(init=False)
     max_acceptor_count: int = field(init=False)
     is_buried: Optional[bool] = None
