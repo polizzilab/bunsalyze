@@ -11,7 +11,7 @@ dependencies = [
     "networkx",
     "freesasa>=2.2.1",
     "rdkit>=2025.03.5",
-    "torch>=2.4.0",
+    "torch>=2.3.1",
 ]
 
 
