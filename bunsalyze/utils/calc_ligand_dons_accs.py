@@ -1,6 +1,7 @@
 import io
 import math
 import prody as pr
+import numpy as np
 from typing import List
 
 from rdkit import Chem
@@ -65,7 +66,24 @@ def compute_ligand_capacity(rdmol: Chem.Mol) -> dict:
     return capacity
 
 
-def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, covalent_hydrogen_max_distance: float = 1.2) -> List[PolarAtom]:
+def get_bonded_heavy_atoms(rdatom: Chem.Atom, rdconformer: Chem.Conformer) -> List[BondedHeavyAtom]:
+    bonded_heavy_atoms = []
+    for bond in rdatom.GetBonds():
+        other_atom = bond.GetOtherAtom(rdatom)
+        if other_atom.GetAtomicNum() > 1:  # Exclude hydrogens
+            resinfo = other_atom.GetPDBResidueInfo()
+            atom_name = resinfo.GetName().strip() if resinfo else f"{other_atom.GetSymbol()}{other_atom.GetIdx()}"
+            bonded_heavy_atoms.append(
+                BondedHeavyAtom(name=atom_name, element=other_atom.GetSymbol(), coord=np.array(rdconformer.GetAtomPosition(other_atom.GetIdx())))
+            )
+    return bonded_heavy_atoms
+
+
+def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mol, covalent_hydrogen_max_distance: float = 1.2) -> List[PolarAtom]:
+
+    name_to_rdatom = {atom.GetPDBResidueInfo().GetName().strip(): atom for atom in lig_mol.GetAtoms() if atom.GetPDBResidueInfo() is not None}
+    rd_conformer = lig_mol.GetConformer()
+
     polar_atoms = []
     for atom, don_acc in lig_cap.items():
         # Skip if not donor or acceptor
@@ -83,7 +101,6 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, covalent_hydroge
             donor_hs_coords = covalent_hydrogens.getCoords()
             donor_hydrogens = [DonorHydrogen(name=x[0], coord=x[1]) for x in zip(donor_hs, donor_hs_coords)]
 
-
         # Get a unique identifier for the residue the atom belongs to and its coordinates.
         atom_ag = lig_ag.select(f'name {atom}')
 
@@ -95,14 +112,20 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, covalent_hydroge
         parent_group_id = tuple(parent_group_id)
         atom_coord = atom_ag.getCoords()[0]
 
+        bonded_heavy_atoms = get_bonded_heavy_atoms(name_to_rdatom[atom], rd_conformer)
+
+        is_aromatic_planar = (len(bonded_heavy_atoms) == 2) and name_to_rdatom[atom].GetHybridization() == Chem.rdchem.HybridizationType.SP2 and donor_count == 0 and acceptor_count > 0
+
         polar_atoms.append(PolarAtom(
             name=atom,
             coord=atom_coord,
             donor_count=donor_count,
             acceptor_count=acceptor_count,
             donor_hydrogens=donor_hydrogens,
+            is_aromatic_planar=is_aromatic_planar,
+            covalent_bonded_heavy_atoms=bonded_heavy_atoms,
             parent_group_identifier=parent_group_id,
             element=atom_ag.getElements()[0],
-            is_ligand_atom=True
+            is_ligand_atom=True,
         ))
     return polar_atoms

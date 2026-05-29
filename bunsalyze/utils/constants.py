@@ -48,9 +48,10 @@ class PolarAtom:
     element: str
     is_ligand_atom: bool 
     donor_hydrogens: list[DonorHydrogen]
+    is_aromatic_planar: bool
+    covalent_bonded_heavy_atoms: List[BondedHeavyAtom]
     max_donor_count: int = field(init=False)
     max_acceptor_count: int = field(init=False)
-    covalent_bonded_heavy_atoms: List[BondedHeavyAtom] = field(init=False)
     is_buried: Optional[bool] = None
 
     def __post_init__(self):
@@ -105,11 +106,19 @@ aa_to_sc_hbond_acceptor_heavy_atom = {
     'E': ['O', 'OE1', 'OE2'],
     'K': ['O'],
     'Q': ['O', 'OE1'],
-    'H': ['O'],
+    'H': ['O', 'ND1', 'NE2'],
     'F': ['O'],
     'R': ['O'],
     'Y': ['O', 'OH'],
     'W': ['O']
+}
+
+# For planar aromatic acceptors, hbond geometry is slightly more restricted, so need to know the covalent heavy atoms to check angle relative to ring plane.
+aromatic_acceptor_to_covalent_bonded_heavy_atoms = {
+    'H': {
+        'ND1': ['CE1', 'CG'],
+        'NE2': ['CE1', 'CD2'],
+    }
 }
 
 # Add backbone OXT to all amino acids:
