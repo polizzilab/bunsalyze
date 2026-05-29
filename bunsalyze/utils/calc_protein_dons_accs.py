@@ -2,7 +2,7 @@ import prody as pr
 import numpy as np
 from copy import deepcopy
 from typing import List
-from .constants import PolarAtom, DonorHydrogen, aa_to_polar_atoms, aa_to_sc_hbond_donor_to_heavy_atom, aa_to_sc_hbond_acceptor_heavy_atom, aa_long_to_short, DEFAULT_NCAA_DICT
+from .constants import PolarAtom, DonorHydrogen, BondedHeavyAtom, aa_to_polar_atoms, aa_to_sc_hbond_donor_to_heavy_atom, aa_to_sc_hbond_acceptor_heavy_atom, aa_long_to_short, aromatic_acceptor_to_covalent_bonded_heavy_atoms, DEFAULT_NCAA_DICT
 
 
 def flat_list(nested_list):
@@ -41,6 +41,11 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                         raise ValueError(f'Donor hydrogen {atom} not found in residue {residue.getResname()} {residue.getResnum()} {residue.getIcode()} for ncaa_dict entry. If any atoms are not present or are renamed, please update the ncaa_dict passed into main function.')
                     h_coord = h_coord_sele.getCoords()[0]
                     donor_hydrogens.append(DonorHydrogen(name=atom, coord=h_coord))
+
+                # TODO: give users a way to feed in these values through ncaa dict.
+                is_weak_acceptor = False
+                is_aromatic_planar = False
+                covalent_bonded_heavy_atoms = []
                 
                 polar_atoms.append(PolarAtom(
                     name=atom,
@@ -50,8 +55,10 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     donor_hydrogens=donor_hydrogens,
                     parent_group_identifier=parent_group_id,
                     element=atom_sele.getElements()[0],  # Infer element from name as first alphabetic character.
+                    is_aromatic_planar=is_aromatic_planar,
+                    covalent_bonded_heavy_atoms=covalent_bonded_heavy_atoms,
                     is_ligand_atom=False,
-                    is_weak_acceptor=False
+                    is_weak_acceptor=is_weak_acceptor
                 ))
 
             # Skip to next residue after processing ncaa.
@@ -126,8 +133,25 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     acceptor_count = 1
 
                 # The only exception to acceptor_count == 2 is for histidine nitrogens where
-                if (aa_short == 'H') and (polar_atom in ('ND1', 'NE2')) and (len(donor_hydrogens) == 0):
-                    acceptor_count = 1
+                if (aa_short == 'H') and (polar_atom in ('ND1', 'NE2')):
+                    if len(donor_hydrogens) == 0:
+                        acceptor_count = 1
+                    else:
+                        acceptor_count = 0
+
+            # Infer element from name as first alphabetic character.
+            element = [x for x in polar_atom if x.isalpha()][0]
+
+            # Only Histidine has aromatic planar acceptors with restricted hbond geometry, so check for those specific atoms.
+            is_aromatic_planar = (aa_short == 'H') and (polar_atom in ('ND1', 'NE2')) and (acceptor_count > 0) and (len(donor_hydrogens) == 0)
+            covalent_bonded_heavy_atoms = []
+            if is_aromatic_planar:
+                for bonded_heavy_atom in aromatic_acceptor_to_covalent_bonded_heavy_atoms[aa_short][polar_atom]:
+                    bonded_heavy_atom_coord = residue.copy().select(f'name {bonded_heavy_atom}').getCoords()[0]
+
+                    covalent_bonded_heavy_atoms.append(
+                        BondedHeavyAtom(name=bonded_heavy_atom, element=bonded_heavy_atom[0], coord=bonded_heavy_atom_coord)
+                    )
 
             polar_atoms.append(PolarAtom(
                 name=polar_atom,
@@ -137,6 +161,8 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                 donor_hydrogens=donor_hydrogens,
                 parent_group_identifier=parent_group_id,
                 element=element,
+                is_aromatic_planar=is_aromatic_planar,
+                covalent_bonded_heavy_atoms=covalent_bonded_heavy_atoms,
                 is_ligand_atom=False,
                 is_weak_acceptor=is_weak_acceptor
             ))

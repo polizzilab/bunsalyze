@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List
+
 import numpy as np
 
 ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.3
@@ -10,6 +11,7 @@ CAH_TO_ACCEPTOR_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.7 # C-alpha hydrogen to accept
 MIN_HBOND_ANGLE = 110
 MIN_HBOND_DISTANCE = 1.5
 H_TO_H_CLASH_DIST = 1.5
+MAX_ARO_PLANAR_ANGLE = 60  # For planar aromatic acceptors, the acceptor→donor-H vector must be within this angle of the acceptor lone-pair direction to count as a hydrogen bond.
 
 DEFAULT_NCAA_DICT = {
     "SEP": {'N': (1, ['H']), 'O': (2, []), 'OG': (2, []), 'O1P': (2, []), 'O2P': (2, []), 'O3P': (2, [])},
@@ -31,6 +33,13 @@ class DonorHydrogen:
 
 
 @dataclass
+class BondedHeavyAtom:
+    name: str
+    element: str
+    coord: np.ndarray
+
+
+@dataclass
 class PolarAtom:
     name: str
     coord: np.ndarray
@@ -40,6 +49,8 @@ class PolarAtom:
     element: str
     is_ligand_atom: bool 
     donor_hydrogens: list[DonorHydrogen]
+    is_aromatic_planar: bool
+    covalent_bonded_heavy_atoms: List[BondedHeavyAtom]
     is_weak_acceptor: bool = False
     max_donor_count: int = field(init=False)
     max_acceptor_count: int = field(init=False)
@@ -97,11 +108,19 @@ aa_to_sc_hbond_acceptor_heavy_atom = {
     'E': ['O', 'OE1', 'OE2'],
     'K': ['O'],
     'Q': ['O', 'OE1'],
-    'H': ['O'],
+    'H': ['O', 'ND1', 'NE2'],
     'F': ['O'],
     'R': ['O'],
     'Y': ['O', 'OH'],
     'W': ['O']
+}
+
+# For planar aromatic acceptors, hbond geometry is slightly more restricted, so need to know the covalent heavy atoms to check angle relative to ring plane.
+aromatic_acceptor_to_covalent_bonded_heavy_atoms = {
+    'H': {
+        'ND1': ['CE1', 'CG'],
+        'NE2': ['CE1', 'CD2'],
+    }
 }
 
 # Add backbone OXT to all amino acids:

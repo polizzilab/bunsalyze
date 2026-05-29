@@ -104,3 +104,4 @@ Ligand Atom SASA: (< 1.0 A^2 == buried)
 
 ### TODO:
 - [ ] Add support for multiple ligands
+- [ ] Support NCAAs with planar aromatic groups similar to HIS.
