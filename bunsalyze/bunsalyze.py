@@ -105,6 +105,8 @@ def set_burial_annotations(
 def compute_capacity_score(
     ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom]
 ) -> dict:
+    ligand_per_atom_capacity = {}
+    buried_ligand_per_atom_capacity = {}
     output_data = []
     for idx, polar_atoms in enumerate((ligand_polar_atoms, protein_polar_atoms)):
         residue_to_buried_atoms = defaultdict(list)
@@ -125,6 +127,11 @@ def compute_capacity_score(
                     if atom.is_buried:
                         buried_remaining_capacity += atom.donor_count + atom.acceptor_count
                         max_buried_capacity += atom.max_donor_count + atom.max_acceptor_count
+                    
+                    if idx == 0:
+                        if atom.is_buried:
+                            buried_ligand_per_atom_capacity[atom.name] = atom.donor_count + atom.acceptor_count / (atom.max_donor_count + atom.max_acceptor_count) if (atom.max_donor_count + atom.max_acceptor_count) > 0 else 1.0
+                        ligand_per_atom_capacity[atom.name] = atom.donor_count + atom.acceptor_count / (atom.max_donor_count + atom.max_acceptor_count) if (atom.max_donor_count + atom.max_acceptor_count) > 0 else 1.0
 
             # Calculate the fraction of capacity satisfied for buried and non-buried atoms.
             fraction_buried_capacity_satisfied = (max_buried_capacity - buried_remaining_capacity) / max_buried_capacity if max_buried_capacity else 1.0
@@ -141,7 +148,8 @@ def compute_capacity_score(
         'ligand_buried_fraction_unsat': output_data[0][1], 
         'protein_buried_fraction_unsat': output_data[1][1],
         'ligand_fraction_unsat': output_data[0][0], 
-        'protein_fraction_unsat': output_data[1][0]
+        'protein_fraction_unsat': output_data[1][0],
+        'ligand_per_atom_capacity': ligand_per_atom_capacity
     }
 
 
@@ -179,6 +187,8 @@ def main(
         'input_path': str(input_path), 
         'ligand_buns': [(i.name, *i.parent_group_identifier, i.is_weak_acceptor) for i in ligand_buns], 
         'protein_buns': [(i.name, *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns], 
+        'buns_score': (2 * len(ligand_buns)) + len(protein_buns),
+        "buns_capacity_score": 2 * sum(fraction_unsat_dicts['ligand_buried_per_atom_capacity'].values()) + sum(fraction_unsat_dicts['protein_buried_fraction_unsat'].values()),
         **fraction_unsat_dicts,
         **ligand_burial_annotations,
     }
