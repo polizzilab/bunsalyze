@@ -10,14 +10,17 @@ from .constants import (
     PolarAtom, DonorHydrogen, ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF, 
     ON_S_HYDROGEN_BOND_DISTANCE_CUTOFF, S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF, 
     CAH_TO_ACCEPTOR_HYDROGEN_BOND_DISTANCE_CUTOFF,
-    MIN_HBOND_ANGLE, MIN_HBOND_DISTANCE, H_TO_H_CLASH_DIST
+    MIN_HBOND_ANGLE, MIN_HBOND_DISTANCE, H_TO_H_CLASH_DIST, MAX_ARO_PLANAR_ANGLE
 )
+
+def normalize(v):
+    return v / max(np.linalg.norm(v), 1e-6)
 
 
 class PolarAtomGraph:
     def __init__(
         self, ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], 
-        run_hydrogen_atom_clash_check: bool, ignore_ligand_intramolecular_hbonds: bool
+        run_hydrogen_atom_clash_check: bool, ignore_ligand_intramolecular_hbonds: bool, debug: bool = False
     ):
 
         self.hbond_max_distance = S_TO_S_HYDROGEN_BOND_DISTANCE_CUTOFF
@@ -43,6 +46,7 @@ class PolarAtomGraph:
 
         self.graph = nx.from_edgelist(self.edge_index.numpy())
         self.graph.add_nodes_from(np.arange(self.all_coords.shape[0]))
+        self.debug = debug
 
     def _get_ligand_coords(self):
         return torch.from_numpy(np.array([atom.coord for atom in self.ligand_polar_atoms]))
@@ -65,28 +69,28 @@ class PolarAtomGraph:
 
         return [x[0] for x in neighbor_ligand_atom_indices], [x[0] for x in neighbor_protein_atom_indices]
     
-    def _consume_neighborhood(self, curr_polar_atom, neighbor_polar_atoms, debug=False):
+    def _consume_neighborhood(self, curr_polar_atom, neighbor_polar_atoms):
         found_valid_hbond = False
         for neighbor_polar_atom in neighbor_polar_atoms:
 
-            # Can escape this if we find a valid hbond.
-            if found_valid_hbond:
+            # If the current atom or neighbor atom has no remaining donor or acceptor capacity, we can skip checking this pair since it can't form any new hbonds.
+            if curr_polar_atom.donor_count == 0 and curr_polar_atom.acceptor_count == 0:
                 break
 
-            # Check the current atom and neighbor atom for donor hydrogens.
-            for hydrogen in curr_polar_atom.donor_hydrogens:
+            # Check the current atom and neighbor atom for donor hydrogens sorted by distance to the other atom
+            for hydrogen in sorted(curr_polar_atom.donor_hydrogens, key=lambda x: np.linalg.norm(x.coord - neighbor_polar_atom.coord)):
                 found_valid_hbond = found_valid_hbond or is_valid_hbond(
                     curr_polar_atom, hydrogen, neighbor_polar_atom, 
-                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug,
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=False,
                     ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
-            for neighbor_hydrogen in neighbor_polar_atom.donor_hydrogens:
+            for neighbor_hydrogen in sorted(neighbor_polar_atom.donor_hydrogens, key=lambda x: np.linalg.norm(x.coord - curr_polar_atom.coord)):
                 found_valid_hbond = found_valid_hbond or is_valid_hbond(
                     neighbor_polar_atom, neighbor_hydrogen, curr_polar_atom, 
-                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=debug,
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=False,
                     ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
-            if debug: print(
+            if self.debug: print(
                 curr_polar_atom.name, curr_polar_atom.parent_group_identifier, 
                 neighbor_polar_atom.name, neighbor_polar_atom.parent_group_identifier, found_valid_hbond
             )
@@ -152,10 +156,12 @@ def is_valid_hbond(
     4. The distance between the donor and acceptor atoms is within the cutoff distance.
     5. The angle between the donor-hydrogen and acceptor-hydrogen vectors is greater than the minimum angle.
     6. The donor hydrogen does not clash with any hydrogens on the acceptor atom.
+    7. If the acceptor is planar-aromatic, the donor must be in the plane of the acceptor.
 
     If all conditions are met, the function returns True, indicating a valid hydrogen bond. Otherwise, it returns False.
     """
 
+    theta_lp = None
     if ignore_ligand_intramolecular_hbonds:
         if donor_atom.is_ligand_atom and acceptor_atom.is_ligand_atom:
             if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, 'ignoring ligand intramolecular hbonds')
@@ -225,10 +231,23 @@ def is_valid_hbond(
             if np.linalg.norm(donor_hydrogen.coord - acc_donor.coord) < H_TO_H_CLASH_DIST:
                 if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, f'clash with {acc_donor.name}')
                 return False
+    
+    if acceptor_atom.is_aromatic_planar:
+        # Compute the vector pointing from acceptor to its lone-pair
+        v1 = normalize(acceptor_atom.covalent_bonded_heavy_atoms[0].coord - acceptor_atom.coord)
+        v2 = normalize(acceptor_atom.covalent_bonded_heavy_atoms[1].coord - acceptor_atom.coord)
+        lp = normalize(-(v1 + v2))    # sp2 lone pair: external bisector of C-N-C
+        acceptor_to_donor_h = normalize(donor_hydrogen.coord - acceptor_atom.coord)
+
+        # Compute the angle between acceptor-to-donor hydrogen vector and the acceptor's lone pair vector, this should be small for good overlap.
+        theta_lp = np.rad2deg(np.arccos(np.clip(np.dot(lp, acceptor_to_donor_h), -1, 1)))
+        if theta_lp > MAX_ARO_PLANAR_ANGLE:
+            if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, f'theta_lp {theta_lp:.1f}° exceeds cutoff {MAX_ARO_PLANAR_ANGLE}°')
+            return False
 
     # Adjust the donor and acceptor counts for the hydrogen bond
     donor_atom.donor_count -= 1
     acceptor_atom.acceptor_count -= 1
     donor_hydrogen.engage(acceptor_atom)
-    if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, distance, angle, True)
+    if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, distance, angle, theta_lp, True)
     return True

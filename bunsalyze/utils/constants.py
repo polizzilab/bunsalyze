@@ -11,6 +11,7 @@ CAH_TO_ACCEPTOR_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.7 # C-alpha hydrogen to accept
 MIN_HBOND_ANGLE = 110
 MIN_HBOND_DISTANCE = 1.5
 H_TO_H_CLASH_DIST = 1.5
+MAX_ARO_PLANAR_ANGLE = 60 # For planar aromatic acceptors, the donor must be within this angle of the plane of the acceptor to count as a hydrogen bond.
 
 DEFAULT_NCAA_DICT = {
     "SEP": {'N': (1, ['H']), 'O': (2, []), 'OG': (2, []), 'O1P': (2, []), 'O2P': (2, []), 'O3P': (2, [])},

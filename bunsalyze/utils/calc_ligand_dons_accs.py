@@ -114,7 +114,7 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mo
 
         bonded_heavy_atoms = get_bonded_heavy_atoms(name_to_rdatom[atom], rd_conformer)
 
-        is_aromatic_planar = (len(bonded_heavy_atoms) == 2) and name_to_rdatom[atom].GetHybridization() == Chem.rdchem.HybridizationType.SP2 and donor_count == 0 and acceptor_count > 0
+        is_aromatic_planar = (len(bonded_heavy_atoms) == 2) and (name_to_rdatom[atom].GetHybridization() == Chem.rdchem.HybridizationType.SP2) and (donor_count == 0) and (acceptor_count > 0)
 
         polar_atoms.append(PolarAtom(
             name=atom,

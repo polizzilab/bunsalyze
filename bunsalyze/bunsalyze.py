@@ -167,7 +167,7 @@ def main(
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
     g = PolarAtomGraph(
         ligand_polar_atoms, protein_polar_atoms, run_hydrogen_atom_clash_check=not disable_hydrogen_clash_check,
-        ignore_ligand_intramolecular_hbonds=ignore_ligand_intramolecular_hbonds
+        ignore_ligand_intramolecular_hbonds=ignore_ligand_intramolecular_hbonds, debug=not silent
     )
     ligand_buns = g.compute_ligand_buns()
     protein_buns = g.compute_protein_buns()
@@ -204,6 +204,7 @@ def cli():
     parser.add_argument('--ignore_sulfur_acceptors', action='store_true', help='If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.')
     parser.add_argument('--ignore_sasa_threshold', action='store_true', help='If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.')
     parser.add_argument('--use_ca_donors', action='store_true', help='If set, uses CA atoms as potential donors. Default behavior does not use CA atoms as hbond donors.')
+    parser.add_argument('--verbose', '-v', action='store_true', help='If set, prints additional information about the analysis to the console.')
     args = parser.parse_args()
 
     ncaa_dict = {}
@@ -220,7 +221,7 @@ def cli():
     complex_ = pr.parsePDB(str(args.input_path))
     results = main(
         args.input_path, complex_, args.smiles, 
-        sasa_threshold=args.sasa_threshold, silent=False, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
+        sasa_threshold=args.sasa_threshold, silent=not args.verbose, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
         ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors,
