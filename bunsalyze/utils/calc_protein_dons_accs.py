@@ -41,6 +41,11 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                         raise ValueError(f'Donor hydrogen {atom} not found in residue {residue.getResname()} {residue.getResnum()} {residue.getIcode()} for ncaa_dict entry. If any atoms are not present or are renamed, please update the ncaa_dict passed into main function.')
                     h_coord = h_coord_sele.getCoords()[0]
                     donor_hydrogens.append(DonorHydrogen(name=atom, coord=h_coord))
+
+                # TODO: give users a way to feed in these values through ncaa dict.
+                is_weak_acceptor = False
+                is_aromatic_planar = False
+                covalent_bonded_heavy_atoms = []
                 
                 polar_atoms.append(PolarAtom(
                     name=atom,
@@ -50,8 +55,10 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     donor_hydrogens=donor_hydrogens,
                     parent_group_identifier=parent_group_id,
                     element=atom_sele.getElements()[0],  # Infer element from name as first alphabetic character.
+                    is_aromatic_planar=is_aromatic_planar,
+                    covalent_bonded_heavy_atoms=covalent_bonded_heavy_atoms,
                     is_ligand_atom=False,
-                    is_weak_acceptor=False
+                    is_weak_acceptor=is_weak_acceptor
                 ))
 
             # Skip to next residue after processing ncaa.
