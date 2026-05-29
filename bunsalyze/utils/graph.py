@@ -70,7 +70,10 @@ class PolarAtomGraph:
         return [x[0] for x in neighbor_ligand_atom_indices], [x[0] for x in neighbor_protein_atom_indices]
     
     def _consume_neighborhood(self, curr_polar_atom, neighbor_polar_atoms):
-        found_valid_hbond = False
+        found_valid_hbond = (
+            any(h.is_engaged for h in curr_polar_atom.donor_hydrogens) or
+            (curr_polar_atom.acceptor_count < curr_polar_atom.max_acceptor_count)
+        )
         for neighbor_polar_atom in neighbor_polar_atoms:
 
             # If the current atom or neighbor atom has no remaining donor or acceptor capacity, we can skip checking this pair since it can't form any new hbonds.
@@ -81,13 +84,13 @@ class PolarAtomGraph:
             for hydrogen in sorted(curr_polar_atom.donor_hydrogens, key=lambda x: np.linalg.norm(x.coord - neighbor_polar_atom.coord)):
                 found_valid_hbond = found_valid_hbond or is_valid_hbond(
                     curr_polar_atom, hydrogen, neighbor_polar_atom, 
-                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=False,
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=self.debug,
                     ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
             for neighbor_hydrogen in sorted(neighbor_polar_atom.donor_hydrogens, key=lambda x: np.linalg.norm(x.coord - curr_polar_atom.coord)):
                 found_valid_hbond = found_valid_hbond or is_valid_hbond(
                     neighbor_polar_atom, neighbor_hydrogen, curr_polar_atom, 
-                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=False,
+                    hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=self.debug,
                     ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
             if self.debug: print(
