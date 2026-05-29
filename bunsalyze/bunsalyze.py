@@ -149,12 +149,13 @@ def compute_capacity_score(
         'protein_buried_fraction_unsat': output_data[1][1],
         'ligand_fraction_unsat': output_data[0][0], 
         'protein_fraction_unsat': output_data[1][0],
-        'ligand_per_atom_capacity': ligand_per_atom_capacity
+        'ligand_per_atom_capacity': ligand_per_atom_capacity,
+        'ligand_buried_per_atom_capacity': buried_ligand_per_atom_capacity
     }
 
 
 def main(
-    input_path: os.PathLike, protein_complex: pr.AtomGroup, smiles: str, 
+    input_path: os.PathLike, smiles: str, 
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
@@ -162,6 +163,9 @@ def main(
     covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False,
     report_weak_acceptor_buns: bool = False
 ) -> dict:
+
+    protein_complex = pr.parsePDB(str(input_path))
+    assert protein_complex is not None, f"Failed to parse PDB file at {input_path}"
 
     # Load the relevant protein and ligand data.
     prot_ag, lig_ag, smi_mol, lig_mol = parse_complex_and_build_rdkit_ligand(protein_complex, smiles, override_ligand_selection_string)
@@ -230,9 +234,8 @@ def cli():
     if not input_path.exists():
         raise FileNotFoundError(f"Input file {args.input_path} does not exist.")
 
-    complex_ = pr.parsePDB(str(args.input_path))
     results = main(
-        args.input_path, complex_, args.smiles, 
+        args.input_path, args.smiles, 
         sasa_threshold=args.sasa_threshold, silent=not args.verbose, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
