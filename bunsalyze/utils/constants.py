@@ -1,6 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
-from typing import Optional, Sequence
+from typing import Optional, Sequence, List
+
 import numpy as np
 
 ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF = 3.3
@@ -31,6 +32,13 @@ class DonorHydrogen:
 
 
 @dataclass
+class BondedHeavyAtom:
+    name: str
+    element: str
+    coord: np.ndarray
+
+
+@dataclass
 class PolarAtom:
     name: str
     coord: np.ndarray
@@ -42,6 +50,7 @@ class PolarAtom:
     donor_hydrogens: list[DonorHydrogen]
     max_donor_count: int = field(init=False)
     max_acceptor_count: int = field(init=False)
+    covalent_bonded_heavy_atoms: List[BondedHeavyAtom] = field(init=False)
     is_buried: Optional[bool] = None
 
     def __post_init__(self):

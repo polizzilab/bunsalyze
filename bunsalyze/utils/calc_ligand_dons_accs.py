@@ -6,7 +6,7 @@ from typing import List
 from rdkit import Chem
 from rdkit.Chem import AllChem
 
-from .constants import PolarAtom, DonorHydrogen
+from .constants import PolarAtom, DonorHydrogen, BondedHeavyAtom
 
 
 tbl = Chem.GetPeriodicTable()
