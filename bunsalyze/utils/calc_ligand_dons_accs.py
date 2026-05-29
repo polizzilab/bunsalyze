@@ -109,10 +109,10 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mo
         atom_ag = lig_ag.select(f'name {atom}')
 
         parent_group_id = []
-        parent_group_id.append(atom_ag.getChids()[0])
-        parent_group_id.append(atom_ag.getResnames()[0])
+        parent_group_id.append(str(atom_ag.getChids()[0]))
+        parent_group_id.append(str(atom_ag.getResnames()[0]))
         parent_group_id.append(int(atom_ag.getResnums()[0]))
-        parent_group_id.append(atom_ag.getIcodes()[0])
+        parent_group_id.append(str(atom_ag.getIcodes()[0]))
         parent_group_id = tuple(parent_group_id)
         atom_coord = atom_ag.getCoords()[0]
 

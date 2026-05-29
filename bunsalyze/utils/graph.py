@@ -82,17 +82,19 @@ class PolarAtomGraph:
 
             # Check the current atom and neighbor atom for donor hydrogens sorted by distance to the other atom
             for hydrogen in sorted(curr_polar_atom.donor_hydrogens, key=lambda x: np.linalg.norm(x.coord - neighbor_polar_atom.coord)):
-                found_valid_hbond = found_valid_hbond or is_valid_hbond(
+                hbond_formed = is_valid_hbond(
                     curr_polar_atom, hydrogen, neighbor_polar_atom, 
                     hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=self.debug,
                     ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
+                found_valid_hbond = found_valid_hbond or hbond_formed
             for neighbor_hydrogen in sorted(neighbor_polar_atom.donor_hydrogens, key=lambda x: np.linalg.norm(x.coord - curr_polar_atom.coord)):
-                found_valid_hbond = found_valid_hbond or is_valid_hbond(
+                hbond_formed = is_valid_hbond(
                     neighbor_polar_atom, neighbor_hydrogen, curr_polar_atom, 
                     hydrogen_clash_check=self.run_hydrogen_atom_clash_check, debug=self.debug,
                     ignore_ligand_intramolecular_hbonds=self.ignore_ligand_intramolecular_hbonds
                 )
+                found_valid_hbond = found_valid_hbond or hbond_formed
             if self.debug: print(
                 curr_polar_atom.name, curr_polar_atom.parent_group_identifier, 
                 neighbor_polar_atom.name, neighbor_polar_atom.parent_group_identifier, found_valid_hbond
@@ -226,7 +228,8 @@ def is_valid_hbond(
     # Angle between D->H and A->H vectors should be greater than MIN_HBOND_ANGLE
     d_to_h = donor_hydrogen.coord - donor_atom.coord
     a_to_h = donor_hydrogen.coord - acceptor_atom.coord
-    angle = np.rad2deg(np.arccos(np.dot(d_to_h, a_to_h) / (np.linalg.norm(d_to_h) * np.linalg.norm(a_to_h))))
+    val = np.dot(d_to_h, a_to_h) / (np.linalg.norm(d_to_h) * np.linalg.norm(a_to_h))
+    angle = np.rad2deg(np.arccos(np.clip(val, -1.0, 1.0)))
     if angle < MIN_HBOND_ANGLE:
         if debug: print(donor_atom.name, donor_hydrogen.name, acceptor_atom.name, False, f'angle too small {angle}')
         return False

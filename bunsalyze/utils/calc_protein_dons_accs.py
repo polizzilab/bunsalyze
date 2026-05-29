@@ -19,10 +19,10 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
     for residue in protein_ag.iterResidues():
 
         parent_group_id = (
-            residue.getChids()[0],
-            residue.getResnames()[0],
+            str(residue.getChids()[0]),
+            str(residue.getResnames()[0]),
             int(residue.getResnums()[0]),
-            residue.getIcodes()[0]
+            str(residue.getIcodes()[0])
         )
 
         # Handles non-canonical amino acids 
@@ -40,7 +40,7 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     if h_coord_sele is None:
                         raise ValueError(f'Donor hydrogen {atom} not found in residue {residue.getResname()} {residue.getResnum()} {residue.getIcode()} for ncaa_dict entry. If any atoms are not present or are renamed, please update the ncaa_dict passed into main function.')
                     h_coord = h_coord_sele.getCoords()[0]
-                    donor_hydrogens.append(DonorHydrogen(name=atom, coord=h_coord))
+                    donor_hydrogens.append(DonorHydrogen(name=str(atom), coord=h_coord))
 
                 # TODO: give users a way to feed in these values through ncaa dict.
                 is_weak_acceptor = False

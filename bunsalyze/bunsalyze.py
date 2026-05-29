@@ -130,16 +130,17 @@ def compute_capacity_score(
                     
                     if idx == 0:
                         if atom.is_buried:
-                            buried_ligand_per_atom_capacity[atom.name] = atom.donor_count + atom.acceptor_count / (atom.max_donor_count + atom.max_acceptor_count) if (atom.max_donor_count + atom.max_acceptor_count) > 0 else 1.0
-                        ligand_per_atom_capacity[atom.name] = atom.donor_count + atom.acceptor_count / (atom.max_donor_count + atom.max_acceptor_count) if (atom.max_donor_count + atom.max_acceptor_count) > 0 else 1.0
+                            buried_ligand_per_atom_capacity[atom.name] = (atom.donor_count + atom.acceptor_count) / (atom.max_donor_count + atom.max_acceptor_count) if (atom.max_donor_count + atom.max_acceptor_count) > 0 else 1.0
+                        ligand_per_atom_capacity[atom.name] = (atom.donor_count + atom.acceptor_count) / (atom.max_donor_count + atom.max_acceptor_count) if (atom.max_donor_count + atom.max_acceptor_count) > 0 else 1.0
 
             # Calculate the fraction of capacity satisfied for buried and non-buried atoms.
             fraction_buried_capacity_satisfied = (max_buried_capacity - buried_remaining_capacity) / max_buried_capacity if max_buried_capacity else 1.0
             fraction_capacity_satisfied = (max_capacity - remaining_capacity) / max_capacity if max_capacity else 1.0
 
             # If not fully satisfied, add to the unsatisfied lists.
-            if fraction_buried_capacity_satisfied < 1.0:
+            if fraction_capacity_satisfied < 1.0:
                 residue_fraction_unsatisfied[residue] = 1 - fraction_capacity_satisfied
+            if fraction_buried_capacity_satisfied < 1.0:
                 residue_fraction_buried_unsatisfied[residue] = 1 - fraction_buried_capacity_satisfied
         
         output_data.append((residue_fraction_unsatisfied, residue_fraction_buried_unsatisfied))
