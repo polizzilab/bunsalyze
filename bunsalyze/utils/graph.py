@@ -96,12 +96,15 @@ class PolarAtomGraph:
             )
         return found_valid_hbond
     
-    def compute_ligand_buns(self):
+    def compute_ligand_buns(self, report_weak_acceptor_buns: bool = False):
         unsatisfied_ligand_atoms = []
         for ligand_atom_index in self.ligand_atom_indices:
             neighbor_ligand_atom_indices, neighbor_protein_atom_indices = self._get_neighborhood(ligand_atom_index)
             curr_polar_atom = self.ligand_polar_atoms[ligand_atom_index]
             assert curr_polar_atom.is_buried is not None, f'Need to set atom burial.'
+
+            if curr_polar_atom.is_weak_acceptor and not report_weak_acceptor_buns:
+                continue
 
             neighbor_polar_atoms = (
                 [self.protein_polar_atoms[x] for x in neighbor_protein_atom_indices] + 
@@ -132,7 +135,7 @@ class PolarAtomGraph:
                 (not found_valid_hbond) and 
                 (not curr_polar_atom.name in ('N', 'O', 'OXT')) and 
                 curr_polar_atom.is_buried and
-                (not (curr_polar_atom.element == 'S' and curr_polar_atom.parent_group_identifier[1] == 'MET')) and
+                (not curr_polar_atom.is_weak_acceptor) and
                 (not curr_polar_atom.name == 'CA')
             ):
                 # Don't count backbone atoms as BUNs since we're comparing many sequences on similar backbones.

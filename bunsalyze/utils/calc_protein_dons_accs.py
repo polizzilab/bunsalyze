@@ -50,7 +50,8 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     donor_hydrogens=donor_hydrogens,
                     parent_group_identifier=parent_group_id,
                     element=atom_sele.getElements()[0],  # Infer element from name as first alphabetic character.
-                    is_ligand_atom=False
+                    is_ligand_atom=False,
+                    is_weak_acceptor=False
                 ))
 
             # Skip to next residue after processing ncaa.
@@ -72,7 +73,10 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
         # Create PolarAtom objects for all polar atoms in the residue.
         for polar_atom, polar_atom_coord in zip(curr_atom_names[polar_atoms_mask], curr_atom_coords[polar_atoms_mask]):
 
-            if not use_sulfur_acceptors:
+            # Infer element from name as first alphabetic character.
+            element = [x for x in polar_atom if x.isalpha()][0]
+
+            if not use_sulfur_acceptors and element == 'S':
                 # print('Skipping sulfur atom:', residue.getResname(), residue.getResnum(), residue.getIcode(), polar_atom)
                 continue
 
@@ -104,6 +108,7 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
 
             # Identify the number of acceptor lone pairs associated with the polar atom.
             acceptor_count = 0
+            is_weak_acceptor = False
             if polar_atom in aa_to_sc_hbond_acceptor_heavy_atom[aa_short]:
 
                 if polar_atom in aa_to_sc_hbond_acceptor_heavy_atom[aa_short]:
@@ -111,6 +116,7 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                 
                 if aa_short == 'M':
                     acceptor_count = 1
+                    is_weak_acceptor = True
                 
                 # Cysteine wouldn't accept in disulfide form, 
                 # so check that it has a donor hydrogen since we will not generate designs with thiolates (-S⁻)
@@ -151,6 +157,7 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                 is_aromatic_planar=is_aromatic_planar,
                 covalent_bonded_heavy_atoms=covalent_bonded_heavy_atoms,
                 is_ligand_atom=False
+                is_weak_acceptor=is_weak_acceptor
             ))
 
     return polar_atoms

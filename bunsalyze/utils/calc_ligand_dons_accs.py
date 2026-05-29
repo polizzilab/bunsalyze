@@ -40,6 +40,7 @@ def compute_ligand_capacity(rdmol: Chem.Mol) -> dict:
         nH = atom.GetTotalNumHs()
         donor = nH
         acceptor = 0
+        is_weak_acceptor = False
 
         # Oxygen: acceptor if 2 or fewer bonds and no positive charge.
         if atomic_num == 8:
@@ -57,12 +58,14 @@ def compute_ligand_capacity(rdmol: Chem.Mol) -> dict:
                 # Handle sp2 nitrogens, can only accept if less than 3 covalent bonds.
                 if (hyb == Chem.rdchem.HybridizationType.SP2) and degree < 3:
                     acceptor = num_lone_pairs(atom)
+                    if is_aromatic and nH == 0:
+                        is_weak_acceptor = True
 
                 # Handle sp3 nitrogens, can only accept if 3 bonds and uncharged.
                 if (hyb == Chem.rdchem.HybridizationType.SP3) and degree == 3:
                     acceptor = num_lone_pairs(atom)
 
-        capacity[atom_name] = {'donor': donor, 'acceptor': acceptor}
+        capacity[atom_name] = {'donor': donor, 'acceptor': acceptor, 'is_weak_acceptor': is_weak_acceptor}
     return capacity
 
 
@@ -88,6 +91,7 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mo
     for atom, don_acc in lig_cap.items():
         # Skip if not donor or acceptor
         donor_count, acceptor_count = don_acc['donor'], don_acc['acceptor']
+        is_weak_acceptor = don_acc.get('is_weak_acceptor', False)
         if donor_count == 0 and acceptor_count == 0:
             continue
 
@@ -127,5 +131,6 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mo
             parent_group_identifier=parent_group_id,
             element=atom_ag.getElements()[0],
             is_ligand_atom=True,
+            is_weak_acceptor=is_weak_acceptor
         ))
     return polar_atoms
