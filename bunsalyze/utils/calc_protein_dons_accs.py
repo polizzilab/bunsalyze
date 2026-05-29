@@ -156,7 +156,7 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                 element=element,
                 is_aromatic_planar=is_aromatic_planar,
                 covalent_bonded_heavy_atoms=covalent_bonded_heavy_atoms,
-                is_ligand_atom=False
+                is_ligand_atom=False,
                 is_weak_acceptor=is_weak_acceptor
             ))
 
