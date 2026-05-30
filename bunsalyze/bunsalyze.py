@@ -60,7 +60,8 @@ def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str, 
 def set_burial_annotations(
     ligand_polar_atoms: Sequence[PolarAtom], protein_polar_atoms: Sequence[PolarAtom], 
     ca_coords: np.ndarray, input_path: os.PathLike, sasa_threshold: float, silent: bool,
-    alpha_hull_alpha: float, ignore_sasa_threshold: bool, ignore_all_burial_criteria: bool
+    alpha_hull_alpha: float, ignore_sasa_threshold: bool, ignore_all_burial_criteria: bool,
+    ignore_ligand_sasa_threshold: bool
 ):
     ligand_burial_mask, protein_burial_mask = None, None
     if not ignore_all_burial_criteria:
@@ -70,7 +71,7 @@ def set_burial_annotations(
     freesasa_struct = freesasa.Structure(str(input_path), options={'hetatm': True, 'hydrogen': False})
     sasa_data = freesasa.calc(freesasa_struct)
 
-    ligand_burial_annotations = {'ligand_atoms_in_hull': [], 'ligand_atoms_buried_sasa': [], 'ligand_atoms_sasa': {}}
+    ligand_burial_annotations = {'ligand_atoms_in_hull': [], 'ligand_atoms_buried_sasa': [], 'ligand_atoms_sasa': {}, 'ligand_atoms_considered_buried': []}
     if not silent: print(f'Ligand Atom SASA: (< {sasa_threshold} A^2 == buried)')
     for i, atom in enumerate(ligand_polar_atoms):
         atom_name = atom.name
@@ -87,7 +88,11 @@ def set_burial_annotations(
         if ignore_all_burial_criteria:
             atom.is_buried = True
         else:
-            atom.is_buried = ligand_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold)
+            atom.is_buried = ligand_burial_mask[i].item() and ((sasa < sasa_threshold) or ignore_sasa_threshold or ignore_ligand_sasa_threshold)
+        
+        if atom.is_buried:
+            ligand_burial_annotations['ligand_atoms_considered_buried'].append(atom_name)
+
         if not silent: print(f'\t{atom_name} {sasa}')
 
     for i, atom in enumerate(protein_polar_atoms):
@@ -162,7 +167,7 @@ def main(
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
     use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False, 
     covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False,
-    report_weak_acceptor_buns: bool = False
+    report_weak_acceptor_buns: bool = False, ignore_ligand_sasa_threshold: bool = False
 ) -> dict:
 
     protein_complex = pr.parsePDB(str(input_path))
@@ -176,7 +181,7 @@ def main(
     # Get the hbond-able polar atoms.
     ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, lig_mol, covalent_hydrogen_max_distance=covalent_hydrogen_max_distance)
     protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=use_ca_donors)
-    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold, ignore_all_burial_criteria=ignore_all_burial_criteria)
+    ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold, ignore_all_burial_criteria=ignore_all_burial_criteria, ignore_ligand_sasa_threshold=ignore_ligand_sasa_threshold)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.
     g = PolarAtomGraph(
@@ -219,6 +224,7 @@ def cli():
     parser.add_argument('--ncaa_dict', type=str, default='', help=f'Dictionary mapping ncaa 3-letter code to polar atoms which map to tuples of (# hbonds atom can accept, list of atom names of attached donor hydrogens). Format: \'{ncaa_dict_example_str}\'')
     parser.add_argument('--ignore_sulfur_acceptors', action='store_true', help='If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.')
     parser.add_argument('--ignore_sasa_threshold', action='store_true', help='If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.')
+    parser.add_argument('--ignore_ligand_sasa_threshold', action='store_true', help='If set, does not use a SASA threshold to determine ligand burial, only uses convex hull. Default behavior uses both SASA and convex hull for the ligand.')
     parser.add_argument('--use_ca_donors', action='store_true', help='If set, uses CA atoms as potential donors. Default behavior does not use CA atoms as hbond donors.')
     parser.add_argument('--verbose', '-v', action='store_true', help='If set, prints additional information about the analysis to the console.')
     parser.add_argument('--report_weak_acceptor_buns', action='store_true', help='If set, reports weak acceptors (such as ligand aromatic nitrogen atoms without hydrogens) as BUNs. Default is False.')
@@ -242,7 +248,8 @@ def cli():
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
         ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors,
         ignore_ligand_intramolecular_hbonds=args.ignore_ligand_intramolecular_hbonds,
-        report_weak_acceptor_buns=args.report_weak_acceptor_buns
+        report_weak_acceptor_buns=args.report_weak_acceptor_buns,
+        ignore_ligand_sasa_threshold=args.ignore_ligand_sasa_threshold
     )
     
     if args.output:
