@@ -62,6 +62,8 @@ options:
                         If set, ignores sulfur atoms as potential acceptors. Default behavior includes sulfur atoms as acceptors.
   --ignore_sasa_threshold
                         If set, does not use a SASA threshold to determine burial, only uses convex hull. Default behavior uses both SASA and convex hull.
+  --ignore_ligand_sasa_threshold
+                        If set, does not use a SASA threshold to determine ligand burial, only uses convex hull. Default behavior uses both SASA and convex hull for the ligand.
   --use_ca_donors       If set, uses CA atoms as potential donors. Default behavior does not use CA atoms as hbond donors.
   --verbose, -v         If set, prints additional information about the analysis to the console.
   --report_weak_acceptor_buns
