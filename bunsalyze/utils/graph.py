@@ -1,10 +1,9 @@
 from typing import Sequence
 from dataclasses import dataclass
 
-import torch
-torch.set_num_threads(2)
 import numpy as np
 import networkx as nx
+from scipy.spatial.distance import cdist
 
 from .constants import (
     PolarAtom, DonorHydrogen, ON_ON_HYDROGEN_BOND_DISTANCE_CUTOFF, 
@@ -31,28 +30,28 @@ class PolarAtomGraph:
 
         # Compute a list of all polar atom coordinates and masks tracking which are from the ligand.
         lig_coords, prot_coords = self._get_ligand_coords(), self._get_protein_coords()
-        self.all_coords = torch.cat([lig_coords, prot_coords])
-        self.is_lig_mask = torch.zeros(self.all_coords.shape[0], dtype=torch.bool)
+        self.all_coords = np.concatenate([lig_coords, prot_coords], axis=0)
+        self.is_lig_mask = np.zeros(self.all_coords.shape[0], dtype=bool)
         self.is_lig_mask[:len(lig_coords)] = True
 
         self.ligand_atom_indices = np.arange(len(ligand_polar_atoms))
         self.protein_atom_indices = np.arange(len(protein_polar_atoms)) + len(ligand_polar_atoms)
-    
-        # Compute a graph defined by atoms within the cutoff distance.
-        self.distance_matrix = torch.cdist(self.all_coords, self.all_coords, p=2)
-        masked_matrix = self.distance_matrix < self.hbond_max_distance
-        masked_matrix = masked_matrix & (~torch.eye(masked_matrix.shape[0], dtype=torch.bool))
-        self.edge_index = masked_matrix.nonzero(as_tuple=False)
 
-        self.graph = nx.from_edgelist(self.edge_index.numpy())
+        # Compute a graph defined by atoms within the cutoff distance.
+        self.distance_matrix = cdist(self.all_coords, self.all_coords)
+        masked_matrix = self.distance_matrix < self.hbond_max_distance
+        masked_matrix = masked_matrix & (~np.eye(masked_matrix.shape[0], dtype=bool))
+        self.edge_index = np.argwhere(masked_matrix)
+
+        self.graph = nx.from_edgelist(self.edge_index)
         self.graph.add_nodes_from(np.arange(self.all_coords.shape[0]))
         self.debug = debug
 
     def _get_ligand_coords(self):
-        return torch.from_numpy(np.array([atom.coord for atom in self.ligand_polar_atoms]))
+        return np.array([atom.coord for atom in self.ligand_polar_atoms], dtype=np.float64).reshape(-1, 3)
 
     def _get_protein_coords(self):
-        return torch.from_numpy(np.array([atom.coord for atom in self.protein_polar_atoms]))
+        return np.array([atom.coord for atom in self.protein_polar_atoms], dtype=np.float64).reshape(-1, 3)
 
     def _get_neighborhood(self, atom_index: int):
         atom_neighbors = list(self.graph.neighbors(atom_index))

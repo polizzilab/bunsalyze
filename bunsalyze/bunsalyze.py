@@ -2,7 +2,6 @@ import os
 import io
 import json
 import ast
-import torch
 from pathlib import Path
 from pprint import pprint
 from collections import defaultdict
