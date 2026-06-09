@@ -1,6 +1,6 @@
 [project]
 name = "bunsalyze"
-version = "0.6.0"
+version = "0.7.0"
 description = "Rigorously counts protein-ligand hydrogen bonds using distance and angle information in a predicted or ground-truth 3D structure (PDB file)."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -11,7 +11,6 @@ dependencies = [
     "networkx",
     "freesasa>=2.2.1",
     "rdkit>=2025.03.5",
-    "torch>=2.3.1",
 ]
 
 
