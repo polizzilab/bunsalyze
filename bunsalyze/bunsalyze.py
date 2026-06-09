@@ -194,8 +194,8 @@ def main(
 
     output = {
         'input_path': str(input_path), 
-        'ligand_buns': [(i.name, *i.parent_group_identifier, i.is_weak_acceptor) for i in ligand_buns], 
-        'protein_buns': [(i.name, *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns], 
+        'ligand_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in ligand_buns], 
+        'protein_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns], 
         'buns_score': (2 * len(ligand_buns)) + len(protein_buns),
         "buns_capacity_score": 2 * sum(fraction_unsat_dicts['ligand_buried_per_atom_capacity'].values()) + sum(fraction_unsat_dicts['protein_buried_fraction_unsat'].values()),
         **fraction_unsat_dicts,
