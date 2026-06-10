@@ -264,7 +264,7 @@ def main(
 
     # Get the hbond-able polar atoms.
     ligand_polar_atoms = get_ligand_polar_atoms(lig_cap, lig_ag, lig_mol, covalent_hydrogen_max_distance=covalent_hydrogen_max_distance)
-    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=use_ca_donors)
+    protein_polar_atoms = get_protein_polar_atoms(prot_ag, ncaa_dict=ncaa_dict, use_sulfur_acceptors=not ignore_sulfur_acceptors, use_ca_donors=use_ca_donors, silent=silent)
     ligand_burial_annotations = set_burial_annotations(ligand_polar_atoms, protein_polar_atoms, ca_coords, input_path, sasa_threshold=sasa_threshold, silent=silent, alpha_hull_alpha=alpha_hull_alpha, ignore_sasa_threshold=ignore_sasa_threshold, ignore_all_burial_criteria=ignore_all_burial_criteria, ignore_ligand_sasa_threshold=ignore_ligand_sasa_threshold)
 
     # Build a radius graph of the polar atoms and compute the buns for the ligand and protein.

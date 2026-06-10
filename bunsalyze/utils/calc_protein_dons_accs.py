@@ -9,7 +9,7 @@ def flat_list(nested_list):
     return [item for sublist in nested_list for item in sublist]
 
 
-def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfur_acceptors: bool = True, use_ca_donors: bool = False) -> List[PolarAtom]:
+def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfur_acceptors: bool = True, use_ca_donors: bool = False, silent: bool = True) -> List[PolarAtom]:
 
     # By default, use the DEFAULT_NCAA_DICT and update it with any user-provided ncaa_dict entries.
     ncaa_dict_ = deepcopy(DEFAULT_NCAA_DICT)
@@ -106,7 +106,8 @@ def get_protein_polar_atoms(protein_ag: pr.AtomGroup, ncaa_dict: dict, use_sulfu
                     (not (aa_short == 'C' and polar_atom == 'SG' and num_donor_hs == 0)) and
                     (not (aa_short == 'G' and polar_atom == 'CA' and num_donor_hs == 2))
                 ):
-                    print(f"Warning: {residue.getResname()} {residue.getResnum()} {residue.getIcode()} {polar_atom} has {num_donor_hs} donor hydrogens (names: {curr_atom_names}), but expected {len(aa_to_sc_hbond_donor_to_heavy_atom[aa_short][polar_atom])}.")
+                    if not silent:
+                        print(f"Warning: {residue.getResname()} {residue.getResnum()} {residue.getIcode()} {polar_atom} has {num_donor_hs} donor hydrogens (names: {curr_atom_names}), but expected {len(aa_to_sc_hbond_donor_to_heavy_atom[aa_short][polar_atom])}.")
 
                 for donor_hydrogen, donor_hydrogen_coord in zip(curr_atom_names[donor_hydrogen_mask], curr_atom_coords[donor_hydrogen_mask]):
                     donor_hydrogens.append(
