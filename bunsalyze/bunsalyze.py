@@ -81,7 +81,7 @@ def compute_shell_residues(
 def compute_shell_buns(
     ligand_buns: list, protein_buns: list,
     protein_buried_fraction_unsat: dict, ligand_buried_per_atom_capacity: dict,
-    shell_assignment: dict, n_shells: int
+    shell_assignment: dict, n_shells: int,
 ) -> dict:
     """
     Build cumulative per-shell BUNs and capacity scores.
@@ -116,10 +116,6 @@ def compute_shell_buns(
         'cumulative_buns_score': cumulative_buns,
         'cumulative_capacity_score': cumulative_cap,
         'per_shell_protein_buns_count': per_shell_prot,
-        'assignment': [
-            [c, r, i, idx]
-            for (c, r, i), idx in sorted(shell_assignment.items(), key=lambda x: (x[0][1], x[0][0]))
-        ],
     }
 
 
