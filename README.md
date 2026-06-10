@@ -98,10 +98,12 @@ that vary across designs but are not involved in ligand contacts.
 Here is a result of running the bunsalyze function on the PDB found in example_pdbs.
 The `buns_score` used in NISE is the sum of the lengths of the ligand buns (x2) and protein buns lists.
 The `buns_capacity_score` is the sum of the ligand_buried_per_atom_capacity values (2x) and the protein_buried_fraction_unsat values.
+`ligand_buried_binary_unsat` is the fraction of buried ligand polar atoms (excluding weak acceptors) that make zero H-bonds — 0.0 is fully satisfied, 1.0 is fully unsatisfied.
 
 ```bash
 {'buns_capacity_score': 9.083333333333332,
  'buns_score': 6,
+ 'ligand_buried_binary_unsat': 0.6666666666666666,
  'input_path': 'example_pdbs/epic_1.pdb',
  'ligand_atoms_buried_sasa': ['O2', 'N3', 'O3', 'O4'],
  'ligand_atoms_considered_buried': ['O2', 'N3', 'O3', 'O4'],

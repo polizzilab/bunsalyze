@@ -275,6 +275,12 @@ def main(
     ligand_buns = g.compute_ligand_buns(report_weak_acceptor_buns=report_weak_acceptor_buns)
     protein_buns = g.compute_protein_buns()
 
+    n_buried_lig = sum(
+        1 for a in ligand_polar_atoms
+        if a.is_buried and (report_weak_acceptor_buns or not a.is_weak_acceptor)
+    )
+    ligand_buried_binary_unsat = len(ligand_buns) / n_buried_lig if n_buried_lig > 0 else 0.0
+
     fraction_unsat_dicts = compute_capacity_score(ligand_polar_atoms, protein_polar_atoms)
 
     protein_buns_tuples = [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns]
@@ -292,6 +298,7 @@ def main(
         'protein_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns],
         'buns_score': (2 * len(ligand_buns)) + len(protein_buns),
         'buns_capacity_score': 2 * sum(fraction_unsat_dicts['ligand_buried_per_atom_capacity'].values()) + sum(fraction_unsat_dicts['protein_buried_fraction_unsat'].values()),
+        'ligand_buried_binary_unsat': ligand_buried_binary_unsat,
         'shell_buns': {'shell_dist': shell_dist, 'n_shells': shells, **shell_buns},
         **fraction_unsat_dicts,
         **ligand_burial_annotations,
