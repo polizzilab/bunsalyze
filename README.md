@@ -26,6 +26,9 @@ With the venv / conda environment that bunsalyze has been pip installed into you
 
 ```bash
 bunsalyze ./path/to/pdb_file.pdb 'smiles_string_for_ligand'
+
+# Example using the bundled epic_1.pdb structure:
+bunsalyze example_pdbs/epic_1.pdb 'CC[C@]1(O)C2=C(C(N3CC4=C5[C@@H]([NH3+])CCC6=C5C(N=C4C3=C2)=CC(F)=C6C)=O)COC1=O'
 ```
 
 Alternatively, install with `pip install .` and run with `bunsalyze ...`.
@@ -85,7 +88,6 @@ The output always includes a `shell_buns` key with the following structure:
     'cumulative_buns_score':    [int, ...],   # buns_score restricted to ligand + shells 1..k
     'cumulative_capacity_score': [float, ...], # buns_capacity_score restricted to ligand + shells 1..k
     'per_shell_protein_buns_count': [int, ...], # protein BUNs first reached at each shell depth
-    'assignment': [[chain, resnum, icode, shell_idx], ...],  # per-residue shell assignment
 }
 ```
 
@@ -95,50 +97,49 @@ that vary across designs but are not involved in ligand contacts.
 
 Here is a result of running the bunsalyze function on the PDB found in example_pdbs.
 The `buns_score` used in NISE is the sum of the lengths of the ligand buns (x2) and protein buns lists.
-The `buns_capacity_score` is the sum of the lengths of the ligand_buried_per_atom_capacity (2x) values and the protein_buried_fraction_unsat values
+The `buns_capacity_score` is the sum of the ligand_buried_per_atom_capacity values (2x) and the protein_buried_fraction_unsat values.
 
 ```bash
 {'buns_capacity_score': 9.083333333333332,
  'buns_score': 6,
  'input_path': 'example_pdbs/epic_1.pdb',
  'ligand_atoms_buried_sasa': ['O2', 'N3', 'O3', 'O4'],
+ 'ligand_atoms_considered_buried': ['O2', 'N3', 'O3', 'O4'],
  'ligand_atoms_in_hull': ['O', 'O2', 'N3', 'O3', 'O4'],
  'ligand_atoms_sasa': {'N2': 16.1801952763787,
                        'N3': 0.0,
-                       'O': 4.0690105880011345,
+                       'O': 4.069010588001133,
                        'O2': 0.0,
                        'O3': 0.0,
                        'O4': 0.0},
- 'ligand_buns': [('O3', np.str_('X'), np.str_('X9E'), 1, np.str_(''), False),
-                 ('O4', np.str_('X'), np.str_('X9E'), 1, np.str_(''), False)],
- 'ligand_buried_fraction_unsat': {(np.str_('X'), np.str_('X9E'), 1, np.str_('')): 0.875},
+ 'ligand_buns': [('O3', 'X', 'X9E', 1, '', False),
+                 ('O4', 'X', 'X9E', 1, '', False)],
+ 'ligand_buried_fraction_unsat': {('X', 'X9E', 1, ''): 0.875},
  'ligand_buried_per_atom_capacity': {'N3': 1.0,
                                      'O2': 0.6666666666666666,
                                      'O3': 1.0,
                                      'O4': 1.0},
- 'ligand_fraction_unsat': {(np.str_('X'), np.str_('X9E'), 1, np.str_('')): 0.8461538461538461},
- 'ligand_per_atom_capacity': {'N2': 2.0,
+ 'ligand_fraction_unsat': {('X', 'X9E', 1, ''): 0.8461538461538461},
+ 'ligand_per_atom_capacity': {'N2': 0.6666666666666666,
                               'N3': 1.0,
                               'O': 1.0,
                               'O2': 0.6666666666666666,
                               'O3': 1.0,
                               'O4': 1.0},
- 'protein_buns': [(np.str_('OE1'),
-                   np.str_('A'),
-                   np.str_('GLU'),
-                   1,
-                   np.str_(''),
-                   False),
-                  (np.str_('NE2'),
-                   np.str_('A'),
-                   np.str_('GLN'),
-                   51,
-                   np.str_(''),
-                   False)],
- 'protein_buried_fraction_unsat': {(np.str_('A'), np.str_('GLN'), 51, np.str_('')): 0.75,
-                                   (np.str_('A'), np.str_('GLU'), 1, np.str_('')): 1.0},
- 'protein_fraction_unsat': {(np.str_('A'), np.str_('GLN'), 51, np.str_('')): 0.75,
-                            (np.str_('A'), np.str_('GLU'), 1, np.str_('')): 1.0}}
+ 'protein_buns': [('OE1', 'A', 'GLU', 1, '', False),
+                  ('NE2', 'A', 'GLN', 51, '', False)],
+ 'protein_buried_fraction_unsat': {('A', 'GLN', 51, ''): 0.75,
+                                   ('A', 'GLU', 1, ''): 1.0},
+ 'protein_fraction_unsat': {('A', 'GLN', 51, ''): 0.75,
+                            ('A', 'GLU', 1, ''): 1.0,
+                            ...},
+ 'shell_buns': {'cumulative_buns_score': [5, 5, 5],
+                'cumulative_capacity_score': [8.083333333333332,
+                                              8.083333333333332,
+                                              8.083333333333332],
+                'n_shells': 3,
+                'per_shell_protein_buns_count': [1, 0, 0],
+                'shell_dist': 5.0}}
 ```
 
 
