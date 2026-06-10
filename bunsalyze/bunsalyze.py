@@ -21,6 +21,7 @@ for key, val in _thread_vars.items():
 import freesasa
 import prody as pr
 import numpy as np
+from scipy.spatial.distance import cdist
 from rdkit import Chem
 from rdkit import RDLogger
 from rdkit.Chem import AllChem
@@ -33,6 +34,93 @@ from bunsalyze.utils.graph import PolarAtomGraph
 
 freesasa.setVerbosity(freesasa.silent)
 RDLogger.DisableLog('rdApp.*') # Disables all RDKit logging
+
+_BACKBONE_NAMES = frozenset({"N", "CA", "C", "O", "OXT", "H", "H1", "H2", "H3", "HA", "HA2", "HA3"})
+
+
+def compute_shell_residues(
+    lig_ag: pr.AtomGroup, prot_ag: pr.AtomGroup,
+    shell_dist: float = 5.0, n_shells: int = 3
+) -> dict:
+    """
+    Assign protein residues to sidechain-contact shells expanding outward from the ligand.
+
+    Shell 1: residues with any sidechain heavy atom within shell_dist of any ligand heavy atom.
+    Shell k: not-yet-assigned residues with a sidechain heavy atom within shell_dist of any
+             shell-(k-1) sidechain heavy atom.
+
+    Returns {(chain, resnum, icode): shell_index} for residues reached within n_shells expansions.
+    """
+    lig_heavy = lig_ag.select("not hydrogen")
+    prev_coords = (lig_heavy if lig_heavy is not None else lig_ag).getCoords()
+
+    res_sc = {}
+    for atom in prot_ag.iterAtoms():
+        if atom.getName() in _BACKBONE_NAMES or atom.getElement().upper() == 'H':
+            continue
+        key = (str(atom.getChid()), int(atom.getResnum()), str(atom.getIcode()).strip())
+        res_sc.setdefault(key, []).append(atom.getCoords())
+    res_sc = {k: np.asarray(v, dtype=np.float64) for k, v in res_sc.items()}
+
+    assignment = {}
+    for shell_idx in range(1, n_shells + 1):
+        new_coords = []
+        for key, coords in res_sc.items():
+            if key in assignment:
+                continue
+            if cdist(prev_coords, coords).min() <= shell_dist:
+                assignment[key] = shell_idx
+                new_coords.append(coords)
+        if not new_coords:
+            break
+        prev_coords = np.concatenate(new_coords, axis=0)
+
+    return assignment
+
+
+def compute_shell_buns(
+    ligand_buns: list, protein_buns: list,
+    protein_buried_fraction_unsat: dict, ligand_buried_per_atom_capacity: dict,
+    shell_assignment: dict, n_shells: int
+) -> dict:
+    """
+    Build cumulative per-shell BUNs and capacity scores.
+
+    The H-bond graph is solved globally; here we only restrict which protein BUNs are counted.
+    Ligand BUNs are always included (the ligand is the centre of every shell).
+    cumulative_*[k] covers shells 1..(k+1).
+    """
+    lig_buns_score = 2 * len(ligand_buns)
+    lig_capacity = 2 * sum(ligand_buried_per_atom_capacity.values())
+
+    cumulative_buns, cumulative_cap, per_shell_prot = [], [], []
+    prev_prot_count = 0
+    for depth in range(1, n_shells + 1):
+        in_shell = {res for res, idx in shell_assignment.items() if idx <= depth}
+        # protein_buns entries: (name, chain, resname, resnum, icode, is_weak_acceptor)
+        n_prot = sum(
+            1 for e in protein_buns
+            if (str(e[1]), int(e[3]), str(e[4]).strip()) in in_shell
+        )
+        # protein_buried_fraction_unsat keys: (chain, resname, resnum, icode)
+        prot_cap = sum(
+            v for k, v in protein_buried_fraction_unsat.items()
+            if (str(k[0]), int(k[2]), str(k[3]).strip()) in in_shell
+        )
+        cumulative_buns.append(lig_buns_score + n_prot)
+        cumulative_cap.append(lig_capacity + prot_cap)
+        per_shell_prot.append(n_prot - prev_prot_count)
+        prev_prot_count = n_prot
+
+    return {
+        'cumulative_buns_score': cumulative_buns,
+        'cumulative_capacity_score': cumulative_cap,
+        'per_shell_protein_buns_count': per_shell_prot,
+        'assignment': [
+            [c, r, i, idx]
+            for (c, r, i), idx in sorted(shell_assignment.items(), key=lambda x: (x[0][1], x[0][0]))
+        ],
+    }
 
 
 def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str, ligand_selection_string: str):
@@ -160,13 +248,14 @@ def compute_capacity_score(
 
 
 def main(
-    input_path: os.PathLike, smiles: str, 
+    input_path: os.PathLike, smiles: str,
     sasa_threshold: float = 1.0, silent: bool = True, disable_hydrogen_clash_check: bool = False,
     alpha_hull_alpha: float = 9.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
-    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False, 
+    use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False,
     covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False,
-    report_weak_acceptor_buns: bool = False, ignore_ligand_sasa_threshold: bool = False
+    report_weak_acceptor_buns: bool = False, ignore_ligand_sasa_threshold: bool = False,
+    shells: int = 3, shell_dist: float = 5.0,
 ) -> dict:
 
     protein_complex = pr.parsePDB(str(input_path))
@@ -192,16 +281,26 @@ def main(
 
     fraction_unsat_dicts = compute_capacity_score(ligand_polar_atoms, protein_polar_atoms)
 
+    protein_buns_tuples = [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns]
+    shell_assignment = compute_shell_residues(lig_ag, prot_ag, shell_dist=shell_dist, n_shells=shells)
+    shell_buns = compute_shell_buns(
+        ligand_buns, protein_buns_tuples,
+        fraction_unsat_dicts['protein_buried_fraction_unsat'],
+        fraction_unsat_dicts['ligand_buried_per_atom_capacity'],
+        shell_assignment, shells,
+    )
+
     output = {
-        'input_path': str(input_path), 
-        'ligand_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in ligand_buns], 
-        'protein_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns], 
+        'input_path': str(input_path),
+        'ligand_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in ligand_buns],
+        'protein_buns': [(str(i.name), *i.parent_group_identifier, i.is_weak_acceptor) for i in protein_buns],
         'buns_score': (2 * len(ligand_buns)) + len(protein_buns),
-        "buns_capacity_score": 2 * sum(fraction_unsat_dicts['ligand_buried_per_atom_capacity'].values()) + sum(fraction_unsat_dicts['protein_buried_fraction_unsat'].values()),
+        'buns_capacity_score': 2 * sum(fraction_unsat_dicts['ligand_buried_per_atom_capacity'].values()) + sum(fraction_unsat_dicts['protein_buried_fraction_unsat'].values()),
+        'shell_buns': {'shell_dist': shell_dist, 'n_shells': shells, **shell_buns},
         **fraction_unsat_dicts,
         **ligand_burial_annotations,
     }
-    
+
     return output
 
 
@@ -227,6 +326,8 @@ def cli():
     parser.add_argument('--use_ca_donors', action='store_true', help='If set, uses CA atoms as potential donors. Default behavior does not use CA atoms as hbond donors.')
     parser.add_argument('--verbose', '-v', action='store_true', help='If set, prints additional information about the analysis to the console.')
     parser.add_argument('--report_weak_acceptor_buns', action='store_true', help='If set, reports weak acceptors (such as ligand aromatic nitrogen atoms without hydrogens) as BUNs. Default is False.')
+    parser.add_argument('--shells', type=int, default=3, help='Number of sidechain-contact shells to expand from the ligand for the shell_buns breakdown (default: 3). Shell 1: residues with a sidechain atom within --shell_dist of any ligand heavy atom; shell k: residues within --shell_dist of any shell-(k-1) sidechain atom.')
+    parser.add_argument('--shell_dist', type=float, default=5.0, help='Heavy-atom contact distance (Å) used to define shell membership (default: 5.0).')
     args = parser.parse_args()
 
     ncaa_dict = {}
@@ -241,14 +342,15 @@ def cli():
         raise FileNotFoundError(f"Input file {args.input_path} does not exist.")
 
     results = main(
-        args.input_path, args.smiles, 
+        args.input_path, args.smiles,
         sasa_threshold=args.sasa_threshold, silent=not args.verbose, disable_hydrogen_clash_check=args.disable_hydrogen_clash_check,
         alpha_hull_alpha=args.alpha_hull_alpha, override_ligand_selection_string=args.override_ligand_selection_string,
         ncaa_dict=ncaa_dict, ignore_sulfur_acceptors=args.ignore_sulfur_acceptors,
         ignore_sasa_threshold=args.ignore_sasa_threshold, use_ca_donors=args.use_ca_donors,
         ignore_ligand_intramolecular_hbonds=args.ignore_ligand_intramolecular_hbonds,
         report_weak_acceptor_buns=args.report_weak_acceptor_buns,
-        ignore_ligand_sasa_threshold=args.ignore_ligand_sasa_threshold
+        ignore_ligand_sasa_threshold=args.ignore_ligand_sasa_threshold,
+        shells=args.shells, shell_dist=args.shell_dist,
     )
     
     if args.output:

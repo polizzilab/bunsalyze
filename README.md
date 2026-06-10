@@ -68,7 +68,30 @@ options:
   --verbose, -v         If set, prints additional information about the analysis to the console.
   --report_weak_acceptor_buns
                         If set, reports weak acceptors (such as ligand aromatic nitrogen atoms without hydrogens) as BUNs. Default is False.
+  --shells SHELLS       Number of sidechain-contact shells to expand from the ligand for the
+                        shell_buns breakdown (default: 3). Shell 1: residues with a sidechain atom
+                        within --shell_dist of any ligand heavy atom; shell k: residues within
+                        --shell_dist of any shell-(k-1) sidechain atom.
+  --shell_dist SHELL_DIST
+                        Heavy-atom contact distance (Å) used to define shell membership (default: 5.0).
 ```
+
+The output always includes a `shell_buns` key with the following structure:
+
+```python
+'shell_buns': {
+    'shell_dist': 5.0,          # contact distance used
+    'n_shells': 3,              # number of shells computed
+    'cumulative_buns_score':    [int, ...],   # buns_score restricted to ligand + shells 1..k
+    'cumulative_capacity_score': [float, ...], # buns_capacity_score restricted to ligand + shells 1..k
+    'per_shell_protein_buns_count': [int, ...], # protein BUNs first reached at each shell depth
+    'assignment': [[chain, resnum, icode, shell_idx], ...],  # per-residue shell assignment
+}
+```
+
+`cumulative_buns_score[1]` (ligand + first two shells) is recommended for ranking protein–ligand
+designs as it focuses on the binding pocket and reduces noise from surface Glu/Asp/Arg/Lys residues
+that vary across designs but are not involved in ligand contacts.
 
 Here is a result of running the bunsalyze function on the PDB found in example_pdbs.
 The `buns_score` used in NISE is the sum of the lengths of the ligand buns (x2) and protein buns lists.
