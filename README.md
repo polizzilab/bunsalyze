@@ -51,7 +51,7 @@ options:
   --sasa_threshold SASA_THRESHOLD
                         SASA threshold for burial (default: 2.5 Å²)
   --alpha_hull_alpha ALPHA_HULL_ALPHA
-                        Alpha-shape alpha parameter (larger = looser, closer to the convex hull; default is 100.0)
+                        Alpha-shape alpha parameter (larger = looser, closer to the convex hull; default is 14.0)
   --output OUTPUT       Output file path (default: print to stdout)
   --disable_hydrogen_clash_check
                         Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.

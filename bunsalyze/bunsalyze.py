@@ -246,7 +246,7 @@ def compute_capacity_score(
 def main(
     input_path: os.PathLike, smiles: str,
     sasa_threshold: float = 2.5, silent: bool = True, disable_hydrogen_clash_check: bool = False,
-    alpha_hull_alpha: float = 100.0, override_ligand_selection_string: str = 'not protein',
+    alpha_hull_alpha: float = 14.0, override_ligand_selection_string: str = 'not protein',
     ncaa_dict: dict = {}, ignore_sulfur_acceptors: bool = False, ignore_sasa_threshold: bool = False,
     use_ca_donors: bool = False, ignore_all_burial_criteria: bool = False,
     covalent_hydrogen_max_distance: float = 1.2, ignore_ligand_intramolecular_hbonds: bool = False,
@@ -315,7 +315,7 @@ def cli():
     parser.add_argument("input_path", type=str, help="Path to the PDB file containing the protein-ligand complex")
     parser.add_argument("smiles", type=str, help="SMILES string representing the ligand")
     parser.add_argument("--sasa_threshold", type=float, default=2.5, help="SASA threshold for burial (default: 2.5 Å²)")
-    parser.add_argument("--alpha_hull_alpha", type=float, default=100.0, help="Alpha-shape alpha parameter (larger = looser, closer to the convex hull; default is 100.0)")
+    parser.add_argument("--alpha_hull_alpha", type=float, default=14.0, help="Alpha-shape alpha parameter (larger = looser, closer to the convex hull; default is 14.0)")
     parser.add_argument("--output", type=str, help="Output file path (default: print to stdout)")
     parser.add_argument("--disable_hydrogen_clash_check", action='store_true', help="Default behavior doesn't count hbonds made at the expense of a hydrogen vdW clash. Set this flag to disable that check.")
     parser.add_argument('--override_ligand_selection_string', type=str, default='not protein', help='How to select the ligand from the PDB file, default is "not protein" but this fails with noncanonical amino acids.')
