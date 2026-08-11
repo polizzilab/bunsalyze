@@ -99,11 +99,18 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mo
         donor_hydrogens = []
         if donor_count > 0:
             covalent_hydrogens = lig_ag.select(f'element H within {covalent_hydrogen_max_distance} of (name {atom})')
-            if len(covalent_hydrogens) > 3:
-                print(f"Warning: More than 3 hydrogens found within covalent distance of donor atom: {atom}.")
-            donor_hs = covalent_hydrogens.getNames()
-            donor_hs_coords = covalent_hydrogens.getCoords()
-            donor_hydrogens = [DonorHydrogen(name=x[0], coord=x[1]) for x in zip(donor_hs, donor_hs_coords)]
+            if covalent_hydrogens is None:
+                # Heavy-atom-only input (e.g. Boltz-2/Protenix/RFDiffusion poses carry no explicit
+                # hydrogens): the donor is identified from the RDKit mol, but there is no H atom to
+                # place. Leave donor_hydrogens empty rather than crashing on len(None).
+                print(f"Warning: donor atom {atom} has no explicit hydrogen within "
+                      f"{covalent_hydrogen_max_distance} A; add hydrogens (e.g. reduce) for donor-H geometry.")
+            else:
+                if len(covalent_hydrogens) > 3:
+                    print(f"Warning: More than 3 hydrogens found within covalent distance of donor atom: {atom}.")
+                donor_hs = covalent_hydrogens.getNames()
+                donor_hs_coords = covalent_hydrogens.getCoords()
+                donor_hydrogens = [DonorHydrogen(name=x[0], coord=x[1]) for x in zip(donor_hs, donor_hs_coords)]
 
         # Get a unique identifier for the residue the atom belongs to and its coordinates.
         atom_ag = lig_ag.select(f'name {atom}')
