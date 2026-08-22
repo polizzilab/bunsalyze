@@ -131,10 +131,33 @@ def parse_complex_and_build_rdkit_ligand(pr_complex: pr.AtomGroup, smiles: str, 
         )
 
     smi_mol = Chem.MolFromSmiles(smiles)
+    if smi_mol is None:
+        raise ValueError(f"RDKit could not parse the ligand SMILES: {smiles!r}")
+
+    # Precondition: every ligand atom must carry an element. bunsalyze relies on per-atom elements
+    # for H-bond donor/acceptor and burial analysis (e.g. prody `element H within ...` in
+    # get_ligand_polar_atoms). A blank PDB element column (cols 77-78) makes prody report empty
+    # elements, which used to surface only as a cryptic `TypeError: object of type 'NoneType' has no
+    # len()` deep in calc_ligand_dons_accs. Fail here with an actionable message instead. (This is
+    # how the tmol MMFF writer regression silently NaN'd 100% of divlib01 buns scores.)
+    lig_elements = [str(e).strip() for e in lig_ag.getElements()]
+    n_blank = sum(1 for e in lig_elements if not e)
+    if n_blank:
+        raise ValueError(
+            f"{n_blank}/{len(lig_elements)} ligand atoms have a blank element symbol (PDB element "
+            f"column, cols 77-78, not populated) for selection '{ligand_selection_string}'. bunsalyze "
+            f"requires per-atom elements; fix the upstream PDB writer to emit the element column."
+        )
 
     buff = io.StringIO()
     pr.writePDBStream(buff, lig_ag.copy())
     lig_mol = Chem.MolFromPDBBlock(buff.getvalue())
+    if lig_mol is None:
+        raise ValueError(
+            f"RDKit could not build the ligand molecule (MolFromPDBBlock returned None) for selection "
+            f"'{ligand_selection_string}'. Common cause: missing/ambiguous element symbols (e.g. "
+            f"halogens) in the ligand PDB records."
+        )
     lig_mol = AllChem.AssignBondOrdersFromTemplate(smi_mol, lig_mol)
 
     return prot_ag, lig_ag, smi_mol, lig_mol
