@@ -99,11 +99,17 @@ def get_ligand_polar_atoms(lig_cap: dict, lig_ag: pr.AtomGroup, lig_mol: Chem.Mo
         donor_hydrogens = []
         if donor_count > 0:
             covalent_hydrogens = lig_ag.select(f'element H within {covalent_hydrogen_max_distance} of (name {atom})')
-            if len(covalent_hydrogens) > 3:
-                print(f"Warning: More than 3 hydrogens found within covalent distance of donor atom: {atom}.")
-            donor_hs = covalent_hydrogens.getNames()
-            donor_hs_coords = covalent_hydrogens.getCoords()
-            donor_hydrogens = [DonorHydrogen(name=x[0], coord=x[1]) for x in zip(donor_hs, donor_hs_coords)]
+            # ProDy `.select()` returns None (not an empty AtomGroup) when nothing
+            # matches, i.e. when a nominal donor atom has no hydrogen within the
+            # covalent distance in the given pose (missing/misplaced polar H, or a
+            # tautomer/protonation mismatch vs the SMILES). Treat that as "no donor
+            # hydrogens" instead of crashing on len(None)/None.getNames().
+            if covalent_hydrogens is not None:
+                if len(covalent_hydrogens) > 3:
+                    print(f"Warning: More than 3 hydrogens found within covalent distance of donor atom: {atom}.")
+                donor_hs = covalent_hydrogens.getNames()
+                donor_hs_coords = covalent_hydrogens.getCoords()
+                donor_hydrogens = [DonorHydrogen(name=x[0], coord=x[1]) for x in zip(donor_hs, donor_hs_coords)]
 
         # Get a unique identifier for the residue the atom belongs to and its coordinates.
         atom_ag = lig_ag.select(f'name {atom}')
